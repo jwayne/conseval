@@ -1,13 +1,18 @@
+#! /usr/bin/python
+
 import numpy as np
 import os
 import sys
 
-from score_conservation import run_scorer, get_scorer
+from alignment import Alignment
+from process import run_scorers
+from scorer import get_scorer
 from utils import get_column
 
 
-#####
+################################################################################
 # Data processing
+################################################################################
 
 def parse_testset(test_file, parse_fields_func, alignment):
     actual = []
@@ -28,7 +33,7 @@ def parse_testset(test_file, parse_fields_func, alignment):
                 start_pos -= len(actual) - pos
             elif pos > len(actual):
                 for i in xrange(len(actual), pos):
-                    if get_column(i, alignment) == 'X':
+                    if get_column(i, alignment.msa) == 'X':
                         # if shitty, fill it in
                         actual.append(None)
                         sys.stderr.write("%d: %s\n" % (ind, test_file))
@@ -69,8 +74,9 @@ DATA_CONFIGS = {
 }
 
 
-#####
+################################################################################
 # Run experiments
+################################################################################
 
 def run_experiments(dataset='all', scorer_names='js_divergence', **kwargs):
     # Determine which sets of data to run experiments on
@@ -84,7 +90,7 @@ def run_experiments(dataset='all', scorer_names='js_divergence', **kwargs):
     # Determine which scorer to run
     if type(scorer_names) == str:
         scorer_names = (scorer_names,)
-    scorers = [get_scorer(s) for s in scorer_name]
+    scorers = [get_scorer(s) for s in scorer_names]
 
     count_scored = 0
     count_missing = 0
@@ -94,16 +100,18 @@ def run_experiments(dataset='all', scorer_names='js_divergence', **kwargs):
             for file in files:
                 if not file.endswith('.aln'):
                     continue
-                aln_file = os.path.join(root, file)
+                align_file = os.path.join(root, file)
                 # Get the 'tail' of the path after aln_dir
                 file = os.path.join(root, data_config['aln_to_test'](file))[len(aln_dir)+1:]
                 test_file = os.path.join(DATA_HOME_DIR, data_config['test_dir'], file)
                 if not os.path.exists(test_file):
+                    # No test file, so don't even bother scoring.
                     count_missing += 1
                     continue
-
                 count_scored += 1
-                scores, alignment, names = run_scorer(aln_file, scorers, **kwargs)
+
+                alignment = Alignment(align_file)
+                scores = run_scorers(alignment, scorers, **kwargs)
                 actual = parse_testset(test_file, data_config['parse_fields_func'], alignment)
 
                 yield [(x,y) for x,y in zip(scores, actual) if y is not None]
@@ -112,4 +120,6 @@ def run_experiments(dataset='all', scorer_names='js_divergence', **kwargs):
 
 
 if __name__ == "__main__":
-    print run_experiments()[0]
+    for exp in run_experiments():
+        print exp[0]
+        break

@@ -14,7 +14,6 @@ def get_column(col_num, alignment):
     col = []
     for seq in alignment:
         if col_num < len(seq): col.append(seq[col_num])
-
     return col
 
 

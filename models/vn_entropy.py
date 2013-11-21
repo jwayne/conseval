@@ -1,6 +1,6 @@
 import math
 import numpy as np
-from models.scorer import Scorer
+from scorer import Scorer
 from utils import *
 
 

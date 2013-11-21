@@ -1,4 +1,4 @@
-from models.scorer import Scorer
+from scorer import Scorer
 from utils import *
 
 

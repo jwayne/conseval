@@ -1,0 +1,6 @@
+*.pyc
+*.ipynb
+*.swp
+*.swo
+*.pkl
+out/
