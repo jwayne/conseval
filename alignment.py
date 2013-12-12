@@ -1,3 +1,4 @@
+from phylotree import get_tree
 from utils import aa_to_index, amino_acids, iupac_alphabet
 
 
@@ -26,6 +27,8 @@ class Alignment(object):
             if len(seq) != seq_len:
                 raise ValueError("Sequences of different lengths: %s (%d) != %s (%d)."
                     % (names[0], seq_len, names[i], len(seq)))
+        if len(set(names)) != len(names):
+            raise ValueError("Sequences have duplicate names.")
 
         # Ingest sequence weights
         seq_weights = []
@@ -42,13 +45,12 @@ class Alignment(object):
         self.names = names
         self.msa = msa
         self.seq_weights = seq_weights
-        self.phylo_tree = None
+        self._phylotree = None
 
-
-    def get_phylo_tree(self):
-        if self.phylo_tree:
-            return self.phylo_tree
-        raise Exception()
+    def get_phylotree(self):
+        if not self._phylotree:
+            self._phylotree = get_tree(self.align_file)
+        return self._phylotree
 
 
 ################################################################################

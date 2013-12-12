@@ -11,7 +11,7 @@ class JsDivergence(Scorer):
 
     USE_BG_DISTRIBUTION = True
 
-    def score_col(self, col, seq_weights, gap_penalty=1):
+    def score_col(self, col, seq_weights, gap_penalty=1, alignment=None):
         """Return the Jensen-Shannon Divergence for the column with the background
         distribution bg_distr."""
 

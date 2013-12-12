@@ -10,7 +10,7 @@ class SumOfPairs(Scorer):
 
     USE_SIM_MATRIX = True
 
-    def score_col(self, col, seq_weights, gap_penalty=1):
+    def score_col(self, col, seq_weights, gap_penalty=1, alignment=None):
         """ Sum the similarity matrix values for all pairs in the column.
         This method is similar to those proposed in Valdar 02."""
 

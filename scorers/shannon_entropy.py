@@ -9,7 +9,7 @@ from utils import *
 
 class ShannonEntropy(Scorer):
 
-    def score_col(self, col, seq_weights, gap_penalty=1):
+    def score_col(self, col, seq_weights, gap_penalty=1, alignment=None):
         """Calculates the Shannon entropy of the column col.
         If gap_penalty == 1, then gaps are penalized. The
         entropy will be between zero and one because of its base. See p.13 of

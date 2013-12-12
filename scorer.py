@@ -25,7 +25,7 @@ def get_scorer(name, s_matrix_file=None, bg_distribution_file=None):
     return scorer
 
 def get_scorer_cls(name):
-    scorer_module = __import__('models.'+name, fromlist=['x'])
+    scorer_module = __import__('scorers.'+name, fromlist=['x'])
     scorer_clsname = "".join(s.capitalize() for s in name.split('_'))
     return getattr(scorer_module, scorer_clsname)
 
@@ -38,6 +38,7 @@ class Scorer(object):
 
     USE_SIM_MATRIX = False
     USE_BG_DISTRIBUTION = False
+    SKIP_ADJUSTMENTS = False
 
     def __init__(self, s_matrix_file, bg_distribution_file):
         """
@@ -63,7 +64,7 @@ class Scorer(object):
                     self.bg_distribution = d
 
     def score(self, alignment, window_size, window_lambda,
-            gap_cutoff, gap_penalty, normalize_scores):
+            gap_cutoff, gap_penalty, normalize_scores, **kwargs):
         """
         - alignment: Alignment object
         - window_size: set to >1 for window scoring
@@ -77,20 +78,20 @@ class Scorer(object):
             col = get_column(i, alignment.msa)
 
             if len(col) == len(alignment.msa):
-                if gap_percentage(col) <= gap_cutoff:
-                    scores.append(self.score_col(col, alignment.seq_weights, gap_penalty))
+                if self.SKIP_ADJUSTMENTS or gap_percentage(col) <= gap_cutoff:
+                    scores.append(self.score_col(col, alignment.seq_weights, gap_penalty, alignment))
                 else:
-                    #XXX: used to be -1000
+                    #XXX: used to be -1000. I adjusted to 0 so the output looks nicer, I think?
                     scores.append(0)
             else:
                 sys.stderr.write("Missing sequences in column %d\n" % i)
-        if window_size > 0:
+        if not self.SKIP_ADJUSTMENTS and window_size > 0:
             scores = window_score(scores, window_size, window_lambda)
-        if normalize_scores:
+        if not self.SKIP_ADJUSTMENTS and normalize_scores:
             scores = calc_z_scores(scores, -999)
         return scores
 
-    def score_col(self, col, seq_weights, gap_penalty):
+    def score_col(self, col, seq_weights, gap_penalty=1, alignment=None):
         """
         - col: the column to be scored.
         - seq_weights: an array of floats that is used to weight the contribution

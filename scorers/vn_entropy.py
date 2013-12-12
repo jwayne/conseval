@@ -12,7 +12,7 @@ class VnEntropy(Scorer):
 
     USE_SIM_MATRIX = True
 
-    def score_col(self, col, seq_weights, gap_penalty=1):
+    def score_col(self, col, seq_weights, gap_penalty=1, alignment=None):
         """ Calculate the von Neuman Entropy as described in Caffrey et al. 04.
         This code was adapted from the implementation found in the PFAAT project
         available on SourceForge."""

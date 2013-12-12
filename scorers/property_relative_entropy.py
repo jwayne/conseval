@@ -11,7 +11,7 @@ class PropertyRelativeEntropy(Scorer):
 
     USE_BG_DISTRIBUTION = True
 
-    def score_col(self, col, seq_weights, gap_penalty=1):
+    def score_col(self, col, seq_weights, gap_penalty=1, alignment=None):
         """Calculate the relative entropy of a column col relative to a
         partition of the amino acids. Similar to Williamson '95.  See shannon_entropy()
         for more general info. """

@@ -79,6 +79,15 @@ DATA_CONFIGS = {
 ################################################################################
 
 def run_experiments(dataset='all', scorer_names='js_divergence', **kwargs):
+    """
+    Iterator that returns lists of pairs of observed/expected scores for each
+    column in a file, for all alignment files in the dataset requested.  Each
+    item in the iterator has the form:
+        [( (score1, score2, score3, ...), expected_score ) for col1,
+         ( (score1, score2, score3, ...), expected_score ) for col2,
+         ...
+        ]
+    """
     # Determine which sets of data to run experiments on
     if dataset == 'all':
         data_configs = DATA_CONFIGS.values()

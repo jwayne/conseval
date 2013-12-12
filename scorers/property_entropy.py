@@ -9,7 +9,7 @@ from utils import *
 
 class PropertyEntropy(Scorer):
 
-    def score_col(self, col, seq_weights, gap_penalty=1):
+    def score_col(self, col, seq_weights, gap_penalty=1, alignment=None):
         """Calculate the entropy of a column col relative to a partition of the
         amino acids. Similar to Mirny '99."""
 

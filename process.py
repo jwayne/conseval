@@ -72,20 +72,29 @@ DEFAULT_SCORER = "js_divergence"
 #defaults
 def run_scorers(alignment, scorers,
         window_size = 3, # 0 = no window
-        win_lam = .5, # for window method linear combination
+        window_lambda = .5, # for window method linear combination
         gap_cutoff = .3,
         gap_penalty = 1,
         normalize_scores = False,
         ):
+    """
+    Returns list of scores for each column, i.e.
+        [(score1, score2, score3, ..) for col1,
+         (score1, score2, score3, ..) for col2,
+         ...
+        ]
+    """
 
     # calculate scores
     all_scores = [] #list of scores by each scorer
     for scorer in scorers:
         try:
             scores = scorer.score(alignment,
-                    window_size, win_lam,
-                    gap_cutoff, gap_penalty,
-                    normalize_scores)
+                    window_size=window_size,
+                    window_lambda=window_lambda,
+                    gap_cutoff=gap_cutoff,
+                    gap_penalty=gap_penalty,
+                    normalize_scores=normalize_scores)
         except Exception, e:
             import traceback
             sys.stderr.write("Error scoring %s via %s\n" %
@@ -170,7 +179,7 @@ def parse_args():
         f = float(s)
         if 0 <= f <= 1: return f
         else: parser.error("must have 0 <= input (%s) <= 1" % s)
-    parser.add_argument('-b', dest='win_lam', type=check_bounds, default=.5,
+    parser.add_argument('-b', dest='window_lambda', type=check_bounds, default=.5,
         help="lambda for window heuristic linear combination. Default=.5 [real in [0,1]]")
     parser.add_argument('-g', dest='gap_cutoff', type=check_bounds, default=.3,
         help="gap cutoff. Do not score columns that contain more than gap cutoff fraction gaps. Default=.3 [real in [0, 1)]")
@@ -206,11 +215,10 @@ def main():
 
     scores = run_scorers(alignment, scorers,
         args.window_size,
-        args.win_lam,
+        args.window_lambda,
         args.gap_cutoff,
         args.gap_penalty,
         args.normalize_scores)
-
 
     print_scores(scores, alignment, scorer_names, kwargs,
         args.out_fname, args.seq_specific_output)

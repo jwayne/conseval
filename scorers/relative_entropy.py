@@ -11,7 +11,7 @@ class RelativeEntropy(Scorer):
 
     USE_BG_DISTRIBUTION = True
 
-    def score_col(self, col, seq_weights, gap_penalty=1):
+    def score_col(self, col, seq_weights, gap_penalty=1, alignment=None):
         """Calculate the relative entropy of the column distribution with a
         background distribution specified in bg_distr. This is similar to the
         approach proposed in Wang and Samudrala 06."""
