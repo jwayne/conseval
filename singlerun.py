@@ -169,6 +169,8 @@ def parse_args():
         help="use sequence weighting. Default=True [True|False]")
     parser.add_argument('-p', dest='gap_penalty', type=int, default=1,
         help="gap penalty. Lower the score of columns that contain gaps. Default=1")
+    parser.add_argument('-f', dest='dat_file', type=str, default=None,
+        help="dat matrix file of rate matrix AND bg distribution. Default=matrix/jtt-dcmut.dat.txt")
     parser.add_argument('-m', dest='s_matrix_file', type=str, default=None,
         help="similarity matrix file, *.bla or *.qij. Default=matrix/blosum62.bla [filename]")
     parser.add_argument('-d', dest='bg_distribution_file', type=str, default=None,
@@ -203,12 +205,12 @@ def main():
     scorer_names = args.scorer_names
     scorers = []
     for name in scorer_names:
-        scorer = get_scorer(name, args.s_matrix_file, args.bg_distribution_file)
+        scorer = get_scorer(name, args.dat_file, args.s_matrix_file, args.bg_distribution_file)
         if scorer:
             scorers.append(scorer)
     if not scorers:
         scorer_names = [DEFAULT_SCORER]
-        scorers.append(get_scorer(DEFAULT_SCORER, args.s_matrix_file, args.bg_distribution_file))
+        scorers.append(get_scorer(DEFAULT_SCORER, args.dat_file, args.s_matrix_file, args.bg_distribution_file))
 
     # Get alignment and supplementary material
     alignment = Alignment(align_file, args.use_seq_weights)

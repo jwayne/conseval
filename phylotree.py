@@ -3,6 +3,21 @@ import sys
 from Bio import Phylo, SeqIO
 
 
+#####
+# Tree manipulation tools
+#####
+
+def traverse_postorder(tree):
+    """
+    Traverse the nodes of `tree` in postorder, returning an iterator
+    on (node1, node2, branchlength) tuples.
+    """
+
+
+#####
+# Conversion tools
+#####
+
 def convert_fname_aln2phy(fname_aln):
     return fname_aln[:-3] + "phy"
 

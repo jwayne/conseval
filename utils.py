@@ -4,9 +4,7 @@ amino_acids = ['A', 'R', 'N', 'D', 'C', 'Q', 'E', 'G', 'H', 'I', 'L', 'K', 'M', 
 iupac_alphabet = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "K", "L", "M", "N", "P", "Q", "R", "S", "T", "U", "V", "W", "Y", "Z", "X", "*", "-"]
 
 # dictionary to map from amino acid to its row/column in a similarity matrix
-aa_to_index = {}
-for i, aa in enumerate(amino_acids):
-    aa_to_index[aa] = i
+aa_to_index = dict((aa,i) for i,aa in enumerate(amino_acids))
 
 
 def get_column(col_num, alignment):

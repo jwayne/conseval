@@ -5,7 +5,7 @@ import os
 import sys
 
 from alignment import Alignment
-from process import run_scorers
+from singlerun import run_scorers
 from scorer import get_scorer
 from utils import get_column
 

@@ -1,4 +1,5 @@
 import math
+import numpy as np
 import os
 import sys
 from utils import gap_percentage, get_column, amino_acids, aa_to_index
@@ -15,13 +16,13 @@ current_dir = os.path.dirname(os.path.realpath(__file__))
 ################################################################################
 
 #defaults
-def get_scorer(name, s_matrix_file=None, bg_distribution_file=None):
+def get_scorer(name, dat_file=None, s_matrix_file=None, bg_distribution_file=None):
     try:
         scorer_cls = get_scorer_cls(name)
     except (ImportError, AttributeError), e:
-        sys.stderr.write("%s: %s is not a valid scoring method.\n" % (e, arg))
+        sys.stderr.write("%s: %s is not a valid scoring method.\n" % (e, name))
         return None
-    scorer = scorer_cls(s_matrix_file, bg_distribution_file)
+    scorer = scorer_cls(dat_file, s_matrix_file, bg_distribution_file)
     return scorer
 
 def get_scorer_cls(name):
@@ -36,11 +37,12 @@ def get_scorer_cls(name):
 
 class Scorer(object):
 
+    USE_DAT_MATRIX_AND_DISTRIBUTION = False
     USE_SIM_MATRIX = False
     USE_BG_DISTRIBUTION = False
     SKIP_ADJUSTMENTS = False
 
-    def __init__(self, s_matrix_file, bg_distribution_file):
+    def __init__(self, dat_file=None, s_matrix_file=None, bg_distribution_file=None):
         """
         - sim_matrix: the similarity (scoring) matrix to be used. Not all
           methods will use this parameter.
@@ -48,20 +50,20 @@ class Scorer(object):
           all methods use this parameter. The default is the blosum62 background, but
           other distributions can be given.
         """
+        if self.USE_DAT_MATRIX_AND_DISTRIBUTION and \
+                (self.USE_SIM_MATRIX or self.USE_BG_DISTRIBUTION):
+            raise Exception()
+        # Data file from Kosiol & Goldman 04
+        # http://www.ebi.ac.uk/goldman/dayhoff/
+        if self.USE_DAT_MATRIX_AND_DISTRIBUTION:
+            # TODO: specify dat file in arguments
+            self.sim_matrix, self.bg_distribution = read_dat_file(dat_file)
+        # Code from Capra & Singh 07
         if self.USE_SIM_MATRIX:
-            if not s_matrix_file:
-                s_matrix_file = os.path.join(current_dir, "matrix/blosum62.bla")
             self.sim_matrix = read_scoring_matrix(s_matrix_file)
+        # Code from Capra & Singh 07
         if self.USE_BG_DISTRIBUTION:
-            # XXX: they used to copy the list.  doesn't seem necessary so i removed it
-            self.bg_distribution = blosum_background_distr
-            if bg_distribution_file:
-                d = get_distribution_from_file(bg_distribution_file)
-                if d:
-                    sys.stderr.write("WARNING: Could not read bg distribution from %s. "
-                                     "Using default bg distribution\n")
-                else:
-                    self.bg_distribution = d
+            self.bg_distribution = get_distribution_from_file(bg_distribution_file)
 
     def score(self, alignment, window_size, window_lambda,
             gap_cutoff, gap_penalty, normalize_scores, **kwargs):
@@ -108,9 +110,39 @@ class Scorer(object):
 # Scorer inputs
 ################################################################################
 
+def read_dat_file(dat_file):
+    if not dat_file:
+        dat_file = "matrix/jtt-dcmut.dat.txt"
+    qij = [[]] # first row is empty
+    with open(dat_file) as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                break
+            qij.append(map(float,line.split()))
+        for line in f:
+            line = line.strip()
+            if line:
+                distr = map(float,line.split())
+                break
+    for i, row in enumerate(qij):
+        row.append(0)
+        col = (qij[j][i] for j in xrange(i+1,len(qij)))
+        row += col
+        row[i] = -sum(row)
+    qij = np.matrix(qij)
+    distr = np.matrix(distr).T
+    return qij, distr
+
+
 def read_scoring_matrix(sm_file):
-    """ Read in a scoring matrix from a file, e.g., blosum80.bla, and return it
-    as an array. """
+    """
+    Read in a scoring matrix from a file, e.g., blosum80.bla, and return it
+    as an array.
+    """
+    if not sm_file:
+        sm_file = "matrix/blosum62.bla"
+
     aa_index = 0
     first_line = 1
     row = []
@@ -156,14 +188,16 @@ def read_scoring_matrix(sm_file):
             list_sm[i][j] = float(list_sm[i][j])
 
     return list_sm
-    #sim_matrix = array(list_sm, type=Float32)
-    #return sim_matrix
 
 
 def get_distribution_from_file(fname):
-    """ Read an amino acid distribution from a file. The probabilities should
+    """
+    Read an amino acid distribution from a file. The probabilities should
     be on a single line separated by whitespace in alphabetical order as in
-    amino_acids above. # is the comment character."""
+    amino_acids above. # is the comment character.
+    """
+    if not fname:
+        fname = "matrix/blosum62.distribution"
 
     distribution = []
     try:
