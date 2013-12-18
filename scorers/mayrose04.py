@@ -26,12 +26,7 @@ class Mayrose04(Scorer):
         alignment.names_map = dict((name, i) for i, name in enumerate(alignment.names))
         tree = alignment.get_phylotree()
         tree_probs = []
-#            S = self.sim_matrix
-#            PI = self.bg_distribution
-#            Q = S*(PI as matrix) ?
-#            Q = S ?
-#            A = PI^(1/2)*S*PI(1/2)
-#            X, Lamb = np.eigen(A)
+        self.sub_model
         all_terminals = []
         for rate, prior in self.dgd.get_categories():
             root = tree.clade
@@ -53,7 +48,7 @@ class Mayrose04(Scorer):
         return super(Mayrose04, self).score(alignment, **kwargs)
 
 
-    # TODO: make alignment mandatory
+    # TODO: make alignment a mandatory argument
     def score_col(self, col, seq_weights, gap_penalty=1, alignment=None):
         """
         Compute this site's rate of evolution r as the expectation of the

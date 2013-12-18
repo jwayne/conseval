@@ -3,6 +3,7 @@ import numpy as np
 import os
 import sys
 from utils import gap_percentage, get_column, amino_acids, aa_to_index
+from substitution import SubstitutionModel
 
 
 # BLOSUM62 background distribution
@@ -56,8 +57,7 @@ class Scorer(object):
         # Data file from Kosiol & Goldman 04
         # http://www.ebi.ac.uk/goldman/dayhoff/
         if self.USE_DAT_MATRIX_AND_DISTRIBUTION:
-            # TODO: specify dat file in arguments
-            self.sim_matrix, self.bg_distribution = read_dat_file(dat_file)
+            self.sub_model = SubstitutionModel(dat_file)
         # Code from Capra & Singh 07
         if self.USE_SIM_MATRIX:
             self.sim_matrix = read_scoring_matrix(s_matrix_file)
@@ -109,31 +109,6 @@ class Scorer(object):
 ################################################################################
 # Scorer inputs
 ################################################################################
-
-def read_dat_file(dat_file):
-    if not dat_file:
-        dat_file = "matrix/jtt-dcmut.dat.txt"
-    qij = [[]] # first row is empty
-    with open(dat_file) as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                break
-            qij.append(map(float,line.split()))
-        for line in f:
-            line = line.strip()
-            if line:
-                distr = map(float,line.split())
-                break
-    for i, row in enumerate(qij):
-        row.append(0)
-        col = (qij[j][i] for j in xrange(i+1,len(qij)))
-        row += col
-        row[i] = -sum(row)
-    qij = np.matrix(qij)
-    distr = np.matrix(distr).T
-    return qij, distr
-
 
 def read_scoring_matrix(sm_file):
     """
