@@ -1,8 +1,10 @@
 from __future__ import division
-from scipy.special import gammainc
+from scipy.special import gammainc, gammaincinv
 
 
 class DiscreteGammaDistribution(object):
+
+    MAX_RATE = 20
 
     def __init__(self, alpha, beta, n_cats):
         if alpha <= 0:
@@ -12,40 +14,13 @@ class DiscreteGammaDistribution(object):
         if n_cats < 1:
             raise Exception("Too few categories")
         n_iters = 0
-        max_err = 1e-5
 
-        lo = 0
-        cat_ubounds = [0] * n_cats
+        # find upper boundaries of each category
+        MAX_PROB = gammainc(alpha, self.MAX_RATE)
+        cat_ubounds = []
         for cat in xrange(n_cats):
-            target = (cat+1) / n_cats
-            hi = lo + .1
-
-            # find suitable lo and hi points, via exponential intervals
-            while True:
-                n_iters += 1
-                curr = gammainc(alpha, hi)
-                if curr < target:
-                    hi += (hi - lo)
-                else:
-                    lo += (hi - lo) / 2
-                    break
-            # find suitable mid point, via binary search
-            while True:
-                n_iters += 1
-                mid = (lo + hi) / 2
-                curr = gammainc(alpha, mid)
-                err = abs(curr - target)
-                if err < max_err:
-                    break
-                else:
-                    if curr > target:
-                        hi = mid
-                    else:
-                        lo = mid
-            # add as upper boundary after adjusting by beta
-            cat_ubounds[cat] = mid / beta
-            # set lo for next round
-            lo = mid
+            target = (cat+1) / n_cats * MAX_PROB
+            cat_ubounds.append(gammaincinv(alpha, target) / beta)
 
         cat_rates = [0] * n_cats
         cat_probs = [0] * n_cats
@@ -55,8 +30,10 @@ class DiscreteGammaDistribution(object):
             cat_rates[cat] = (cat_ubounds[cat]*beta + lo*beta) / 2
             # rate4site represents the bin's prior probability as the probability mass
             # of the bin
-            #XXX: rate4site uses alpha+1??
-            #XXX: rate4site multiplies P[r_i] by alpha/beta*k
+            #XXX: why does rate4site use alpha+1?
+            #XXX: why does rate4site multiply P[r_i] by alpha/beta*n_cats?
+            #XXX: I get uniform cat_probs without the above 2 mods, which makes
+            # sense, but I still don't get why the mods work.
             cat_probs[cat] = (gammainc(alpha+1, cat_ubounds[cat]*beta) - \
                     gammainc(alpha+1, lo*beta)) * alpha / beta * n_cats
             # set lo for next round
@@ -76,10 +53,10 @@ class DiscreteGammaDistribution(object):
         for rate, prob in zip(self.cat_rates, self.cat_probs):
             yield rate, prob
 
+
     def __str__(self):
         return "ubounds %s\nrates %s\nprobs %s\n%d iterations" % (
             self.cat_ubounds,
             self.cat_rates,
             self.cat_probs,
             self.n_iters)
-

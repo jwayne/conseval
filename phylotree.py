@@ -1,54 +1,57 @@
 import os
 from Bio import Phylo, SeqIO
+from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
 
 
 #####
 # Conversion tools
 #####
 
-def convert_fname_aln2phy(fname_aln):
-    return fname_aln[:-3] + "phy"
-
-def convert_file_aln2phy(fname_aln):
+def get_phylotree(alignment, n_bootstrap=0, overwrite=False):
     """
-    Use BioPython to convert the aln file to a phy file.
+    Get the phylo tree corresponding to `alignment`.  If no tree, compute one
+    and cache to disk.
     """
-    fname_phy = convert_fname_aln2phy(fname_aln)
-    with open(fname_aln, "rU") as f_in:
-        with open(fname_phy, "w") as f_out:
-            SeqIO.convert(f_in, "clustal", f_out, "phylip-relaxed")
-    return fname_phy
+    fname_phy = '.'.join(alignment.align_file.split('.')[:-1]) + '.phy'
+    fname_tree = fname_phy + '_phyml_tree.txt'
+    tree = None
+    if not overwrite and os.path.exists(fname_tree) and os.path.getsize(fname_tree):
+        tree = read_phylotree(fname_tree)
+        # Check that the cached tree matches the alignment. If not, re-compute.
+        tree_names = set(clade.name for clade in tree.get_terminals())
+        msa_names = set(alignment.names)
+        if tree_names != msa_names:
+            tree = None
+    if not tree:
+        tree = _compute_phylotree(alignment, fname_phy, fname_tree, n_bootstrap)
+    return tree
 
 
-def convert_fname_aln2tree(fname_aln):
-    return fname_aln[:-3] + "phy_phyml_tree.txt"
+def read_phylotree(fname_tree):
+    return Phylo.read(fname_tree, "newick")
 
-def run_phyml(fname_phy, n_bootstrap):
-    os.system("phyml -i %s -d aa -b %d --quiet --no_memory_check" % (fname_phy, n_bootstrap))
 
-def compute_tree(fname_aln, n_bootstrap=0, overwrite=False):
+def _compute_phylotree(alignment, fname_phy, fname_tree, n_bootstrap):
     """
     Use PhyML to compute the tree for fname_aln.
     Does not compute tree if treefile exists and overwrite=False (default).
     Return the filename of the tree.
     """
-    fname_tree = convert_fname_aln2tree(fname_aln)
-    if overwrite or not os.path.exists(fname_tree) or not os.path.getsize(fname_tree):
-        fname_phy = convert_fname_aln2phy(fname_aln)
-        if not os.path.exists(fname_phy) or not os.path.getsize(fname_phy):
-            convert_file_aln2phy(fname_aln)
-        run_phyml(fname_phy, n_bootstrap)
-    return fname_tree
+    records = []
+    for row,name in zip(alignment.msa, alignment.names):
+        records.append(SeqRecord(Seq(row), id=name, description=name))
+    with open(fname_phy, "w") as f_out:
+        SeqIO.write(records, f_out, "phylip-relaxed")
+    import ipdb
+    ipdb.set_trace()
+    os.system("phyml -i %s -d aa -b %d --quiet --no_memory_check" % (fname_phy, n_bootstrap))
+    return read_phylotree(fname_tree)
 
-def get_tree(fname_aln, n_bootstrap=0, overwrite=False):
-    """
-    Get the phylo tree corresponding to `fname_aln`.  If no tree, compute one
-    and cache to disk.
-    """
-    fname_tree = compute_tree(fname_aln, n_bootstrap, overwrite)
-    return Phylo.read(fname_tree, "newick")
 
+#####
 
 if __name__ == "__main__":
     import sys
-    print get_tree(sys.argv[1])
+    from alignment import Alignment
+    print get_phylotree(Alignment(sys.argv[1]))

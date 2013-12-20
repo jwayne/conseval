@@ -1,13 +1,15 @@
 import random
-from phylotree import get_tree
-from utils import aa_to_index, amino_acids, iupac_alphabet
+import os
+from phylotree import get_phylotree, read_phylotree
+from seqweights import get_seq_weights
+from utils import iupac_alphabet
 
 
 class Alignment(object):
 
     MAX_SEQUENCES = 50
 
-    def __init__(self, align_file):
+    def __init__(self, align_file, **extra_inputs):
         """
         Loads/calculates input data for `align_file`.  Sets:
         - self.msa: List of equal-length lists of nucleotides/AAs
@@ -31,10 +33,10 @@ class Alignment(object):
         if len(set(names)) != len(names):
             raise ValueError("Sequences have duplicate names.")
 
-        # Filter alignment if too many sequences
+        # Filter alignment if too many sequences.  This is only so that tree
+        # computation doesn't take too long.
         if len(msa) > self.MAX_SEQUENCES:
-            import ipdb
-            ipdb.set_trace()
+            self.filtered = True
             random.seed(1000)
             inds = random.sample(range(1,len(msa)), self.MAX_SEQUENCES-1)
             names = [names[0]] + [names[ind] for ind in inds]
@@ -46,12 +48,25 @@ class Alignment(object):
         self._phylotree = None
         self._seq_weights = None
 
-    def get_phylotree(self):
+        if 'tree_file' in extra_inputs:
+            self.tree_file = extra_inputs['tree_file']
+        else:
+            self.tree_file = None
+
+    def get_phylotree(self, n_bootstrap=0, overwrite=False):
         """
         Cached phylogenetic tree.
         """
         if not self._phylotree:
-            self._phylotree = get_tree(self.align_file)
+            if self.tree_file:
+                tree = read_phylotree(self.tree_file)
+                tree_names = set(clade.name for clade in tree.get_terminals())
+                msa_names = set(self.names)
+                if tree_names != msa_names:
+                    raise ValueError("Input tree does not match sequences in alignment")
+            else:
+                tree = get_phylotree(self, n_bootstrap, overwrite)
+            self._phylotree = tree
         return self._phylotree
 
     def get_seq_weights(self):
@@ -62,7 +77,7 @@ class Alignment(object):
         gets a weight of one.
         """
         if not self._seq_weights:
-            self._seq_weights = get_seq_weights(self.align_file, self.msa)
+            self._seq_weights = get_seq_weights(self)
         return self._seq_weights
 
 
@@ -71,8 +86,10 @@ class Alignment(object):
 ################################################################################
 
 def read_fasta_alignment(filename):
-    """ Read in the alignment stored in the FASTA file, filename. Return two
-    lists: the identifiers and sequences. """
+    """
+    Read in the alignment stored in the FASTA file, filename. Return two
+    lists: the identifiers and sequences.
+    """
     names = []
     msa = []
     cur_seq = ''
@@ -104,8 +121,10 @@ def read_fasta_alignment(filename):
 
 
 def read_clustal_alignment(filename):
-    """Read in the alignment stored in the CLUSTAL file, filename. Return
-    two lists: the names and sequences."""
+    """
+    Read in the alignment stored in the CLUSTAL file, filename. Return
+    two lists: the names and sequences.
+    """
     names = []
     msa = []
     with open(filename) as f:

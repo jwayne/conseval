@@ -5,7 +5,7 @@ Code copyright Tony Capra 2007.
 import math
 import numpy as np
 from scorer import Scorer
-from utils import weighted_gap_penalty
+from utils import aa_to_index, weighted_gap_penalty
 
 
 class VnEntropy(Scorer):
@@ -54,7 +54,7 @@ class VnEntropy(Scorer):
             if e > (10**-10):
                 vne -= e * math.log(e) / math.log(20)
 
-        if gap_penalty == 1:
+        if self.gap_penalty == 1:
             #return (1-vne) * weighted_gap_penalty(col, seq_weights)
             return (1-vne) * weighted_gap_penalty(col, [1.] * len(col))
         else:

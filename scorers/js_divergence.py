@@ -11,22 +11,23 @@ class JsDivergence(Scorer):
 
     USE_BG_DISTRIBUTION = True
 
-    def score_col(self, col, alignment):
+    def _precache(self, alignment, precache):
+        precache.seq_weights = alignment.get_seq_weights()
+
+    def score_col(self, col, precache):
         """
         Return the Jensen-Shannon Divergence for the column with the background
         distribution bg_distr.
         """
-
         distr = self.bg_distribution[:]
-        seq_weights = alignment.get_seq_weights()
 
-        fc = weighted_freq_count_pseudocount(col, seq_weights, PSEUDOCOUNT)
+        fc = weighted_freq_count_pseudocount(col, precache.seq_weights, PSEUDOCOUNT)
 
         # if background distrubtion lacks a gap count, remove fc gap count
         if len(distr) == 20:
             new_fc = fc[:-1]
             s = sum(new_fc)
-            for i in range(len(new_fc)):
+            for i in xrange(len(new_fc)):
                 new_fc[i] = new_fc[i] / s
             fc = new_fc
 
@@ -34,11 +35,11 @@ class JsDivergence(Scorer):
 
         # make r distriubtion
         r = []
-        for i in range(len(fc)):
+        for i in xrange(len(fc)):
             r.append(.5 * fc[i] + .5 * distr[i])
 
         d = 0.
-        for i in range(len(fc)):
+        for i in xrange(len(fc)):
             if r[i] != 0.0:
                 if fc[i] == 0.0:
                     d += distr[i] * math.log(distr[i]/r[i], 2)
@@ -50,7 +51,7 @@ class JsDivergence(Scorer):
         # d /= 2 * math.log(len(fc))
         d /= 2
 
-        if gap_penalty == 1:
-            return d * weighted_gap_penalty(col, seq_weights)
+        if self.gap_penalty == 1:
+            return d * weighted_gap_penalty(col, precache.seq_weights)
         else:
             return d

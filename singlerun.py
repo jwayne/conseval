@@ -49,7 +49,7 @@ def print_scores(scores, alignment, scorer_names, kwargs,
             annotation = cur_aa
         else:
             annotation = "".join(get_column(i, alignment.msa))
-        f.write("%d\t%s\t%s\n" % (i, annotation, "\t".join(("%.5f" % s for s in score))))
+        f.write("%d\t%s\t%s\n" % (i+1, annotation, "\t".join(("%.5f" % s for s in score))))
 
     if out_fname:
         f.close()
@@ -64,11 +64,13 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Produce conservation scores for an alignment file.")
 
     parser.add_argument('align_file')
+    parser.add_argument('-x', dest='extra_inputs', action='append', default=[],
+        help="extra inputs associcated with align_file, can specify multiple. Specify as '-x inputName=inputValue', e.g. '-x tree_file=tree.txt'")
 
     parser.add_argument('-s', dest='scorer_names', action='append', default=[],
         help="conservation estimation method, can specify multple. Default='%s'" % DEFAULT_SCORER)
     parser.add_argument('-p', dest='params', action='append', default=[],
-        help="parameters into scorer.score(..), can specify multiple. Specify as '-p paramName=paramValue', e.g. '-p gap_penalty=1")
+        help="parameters to pass to the scorer, can specify multiple. Specify as '-p paramName=paramValue', e.g. '-p gap_penalty=1")
 
     parser.add_argument('-o', dest='out_fname', type=str, 
         help="name of output file. Default prints to screen")
@@ -76,6 +78,7 @@ def parse_args():
         help="reference sequence to print scores in reference to (ignoring gaps). Default prints the entire column.")
 
     args = parser.parse_args()
+    args.extra_inputs = dict(val.split("=") for val in args.extra_inputs)
     args.params = dict(val.split("=") for val in args.params)
     return args
 
@@ -89,7 +92,7 @@ def main():
     scorers = [get_scorer(name, **args.params) for name in scorer_names]
 
     # Get alignment and supplementary inputs
-    alignment = Alignment(align_file)
+    alignment = Alignment(align_file, **args.extra_inputs)
 
     # Compute list of scores, grouped by scorer
     all_scores = []

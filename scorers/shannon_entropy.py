@@ -9,17 +9,17 @@ from utils import weighted_freq_count_pseudocount, weighted_gap_penalty, PSEUDOC
 
 class ShannonEntropy(Scorer):
 
-    def score_col(self, col, alignment):
+    def _precache(self, alignment, precache):
+        precache.seq_weights = alignment.get_seq_weights()
+
+    def score_col(self, col, precache):
         """
         Calculates the Shannon entropy of the column col.
-        If gap_penalty == 1, then gaps are penalized. The
-        entropy will be between zero and one because of its base. See p.13 of
+        The entropy will be between zero and one because of its base. See p.13 of
         Valdar 02 for details. The information score 1 - h is returned for the sake
         of consistency with other scores.
         """
-        seq_weights = alignment.get_seq_weights()
-
-        fc = weighted_freq_count_pseudocount(col, seq_weights, PSEUDOCOUNT)
+        fc = weighted_freq_count_pseudocount(col, precache.seq_weights, PSEUDOCOUNT)
 
         h = 0.
         for i in range(len(fc)):
@@ -31,7 +31,7 @@ class ShannonEntropy(Scorer):
 
         inf_score = 1 - (-1 * h)
 
-        if gap_penalty == 1:
-            return inf_score * weighted_gap_penalty(col, seq_weights)
+        if self.gap_penalty == 1:
+            return inf_score * weighted_gap_penalty(col, precache.seq_weights)
         else:
             return inf_score

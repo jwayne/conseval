@@ -2,6 +2,8 @@ import math
 import numpy as np
 import os
 import sys
+
+from params import ParamDef, Params
 from utils import gap_percentage, get_column, amino_acids, aa_to_index
 from substitution import SubstitutionModel, read_sim_matrix, read_bg_distribution
 
@@ -35,60 +37,6 @@ def get_scorer_cls(name):
 # Helper classes
 ################################################################################
 
-class ParamDef(object):
-
-    def __init__(self, name, default, parse_fxn=None, check_fxn=None, help=None):
-        self.name = name
-        self.parse_fxn = parse_fxn
-        self.check_fxn = check_fxn
-        self.default = self.parse(default)
-
-    def parse(self, *args):
-        if args:
-            val = args[0]
-            if self.parse_fxn:
-                val = self.parse_fxn(val)
-            if self.check_fxn and not self.check_fxn(val):
-                raise ValueError("Input %r is unacceptable for parameter %s"
-                        % (args[0], self.name))
-            return val
-        return self.default
-
-
-class Params(object):
-
-    def __init__(self, param_defs, *overrides):
-        """
-        Set attributes of this object to be the parameters in `param_defs`,
-        overriding default values with the values in `overrides`, preferring
-        earlier-specified overrides to later-specified ones.
-
-        Check that all parameters specified in the `overrides` dicts are
-        present in `param_defs`.
-        """
-        param_def_keys = set([pd.name for pd in param_defs])
-        for i, override in enumerate(overrides):
-            for k in override:
-                if k not in param_def_keys:
-                    raise AttributeError("Input param %s not allowed for this Scorer" % k)
-        for param_def in param_defs:
-            k = param_def.name
-            found = False
-            for override in overrides:
-                if k in override:
-                    setattr(self, k, param_def.parse(override[k]))
-                    found = True
-                    break
-            if not found:
-                setattr(self, k, param_def.parse())
-
-    def __str__(self):
-        return str(self.__dict__)
-
-    def __repr__(self):
-        return "Params(%s)" % self
-
-
 class Precache(object):
     pass
 
@@ -99,10 +47,12 @@ class Precache(object):
 
 class Scorer(object):
 
-    # Tunable parameters for scoring.
-    PARAMS = (
+    # Tunable parameters for scoring.  Children inherit all these parameters
+    # along with these defaults.  Defaults can be overridden and parameters
+    # can be extended, see scorers/mayrose04.py for an example.
+    PARAMS = Params(
         #dat matrix file of rate matrix AND bg distribution
-        ParamDef('dat_file', 'matrix/jtt-dcmut.dat.txt'),
+        ParamDef('sub_model_file', 'matrix/jtt-dcmut.dat.txt'),
         #similarity matrix file, *.bla or *.qij
         ParamDef('sim_matrix_file', 'matrix/blosum62.bla'),
         #background distribution file, e.g., swissprot.distribution
@@ -120,7 +70,6 @@ class Scorer(object):
         #the score times the fraction of non-gap positions in the column.
         ParamDef('gap_penalty', 1, float),
     )
-    PARAM_OVERRIDES = {}
 
     # If there are errors.
     DEFAULT_SCORE = 0
@@ -131,7 +80,7 @@ class Scorer(object):
 
 
     def __init__(self, **params):
-        self.params = Params(self.PARAMS, params, self.PARAM_OVERRIDES)
+        self.PARAMS.set_params(self, params)
 
         if self.USE_DAT_MATRIX_AND_DISTRIBUTION and \
                 (self.USE_SIM_MATRIX or self.USE_BG_DISTRIBUTION):
@@ -139,13 +88,13 @@ class Scorer(object):
         # Data file from Kosiol & Goldman 04
         # http://www.ebi.ac.uk/goldman/dayhoff/
         if self.USE_DAT_MATRIX_AND_DISTRIBUTION:
-            self.sub_model = SubstitutionModel(self.params.dat_file)
+            self.sub_model = SubstitutionModel(self.sub_model_file)
         # Code from Capra & Singh 07
         if self.USE_SIM_MATRIX:
-            self.sim_matrix = read_sim_matrix(self.params.sim_matrix_file)
+            self.sim_matrix = read_sim_matrix(self.sim_matrix_file)
         # Code from Capra & Singh 07
         if self.USE_BG_DISTRIBUTION:
-            self.bg_distribution = read_bg_distribution(self.params.bg_distribution_file)
+            self.bg_distribution = read_bg_distribution(self.bg_distribution_file)
 
 
     def score(self, alignment):
@@ -163,8 +112,8 @@ class Scorer(object):
             List of scores for each site
         """
         # Precache computations shared among calls to score_col().
-        precached = Precache()
-        self._precache(alignment, precached)
+        precache = Precache()
+        self._precache(alignment, precache)
 
         # Main computation.
         scores = []
@@ -172,37 +121,37 @@ class Scorer(object):
             col = get_column(i, alignment.msa)
 
             if len(col) == len(alignment.msa):
-                if self.params.gap_cutoff == 1 or \
-                        gap_percentage(col) <= self.params.gap_cutoff:
-                    scores.append(self.score_col(col, precached))
+                if self.gap_cutoff == 1 or \
+                        gap_percentage(col) <= self.gap_cutoff:
+                    scores.append(self.score_col(col, precache))
                 else:
                     scores.append(self.DEFAULT_SCORE)
             else:
                 sys.stderr.write("Missing sequences in column %d\n" % i)
         #print "Mean score: %f" % np.mean(scores)
-        if self.params.window_size > 0:
-            scores = window_score(scores, self.params.window_size,
-                    self.params.window_lambda)
-        if self.params.normalize_scores:
+        if self.window_size > 0:
+            scores = window_score(scores, self.window_size,
+                    self.window_lambda)
+        if self.normalize_scores:
             scores = calc_z_scores(scores, -999)
         return scores
 
 
-    def _precache(self, alignment, precached):
+    def _precache(self, alignment, precache):
         """ 
         Override this function to pre-cache computations shared among calls
         to score_col().  Store any pre-cached computations as attributes of
-        `precached`.
+        `precache`.
         """
         return
 
 
-    def score_col(self, col, precached):
+    def score_col(self, col, precache):
         """
         @param col:
             the column to be scored.
-        @param precached:
-            object whose attributes are precached computations specific to this
+        @param precache:
+            object whose attributes are precache computations specific to this
             alignment.
         """
         raise NotImplementedError()

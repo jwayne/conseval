@@ -6,32 +6,35 @@ Code by Josh Chen 2013
 from __future__ import division
 from collections import defaultdict
 import numpy as np
-from scorer import Scorer
+
+from scorer import Scorer, ParamDef
 from utils import aa_to_index
 from utils_gamma import DiscreteGammaDistribution
 
 
 class Mayrose04(Scorer):
 
-    PARAM_OVERRIDES = {
+    PARAMS = Scorer.PARAMS.override({
         'window_size': 0,
         'gap_cutoff': 1,
-    }
+    }).extend(
+        ParamDef('alpha', 1, float, lambda x: x>0,
+            help="alpha parameters into the gamma prior"),
+        ParamDef('n_gamma_bins', 16, int, lambda x: x>0,
+            help="number of bins to use for the discrete approximation to the gamma distribution"),
+    )
 
     USE_DAT_MATRIX_AND_DISTRIBUTION = True
 
-    ALPHA = 1
-    BETA = 1
-    N_GAMMA_CATEGORIES = 16
-
     def __init__(self, **params):
         super(Mayrose04, self).__init__(**params)
+        self.beta = self.alpha
         self.dgd = DiscreteGammaDistribution(
-                self.ALPHA, self.BETA, self.N_GAMMA_CATEGORIES)
-        self.DEFAULT_SCORE = self.ALPHA / self.BETA
+                self.alpha, self.beta, self.n_gamma_bins)
+        self.DEFAULT_SCORE = self.alpha / self.beta
 
 
-    def _precache(self, alignment, precached):
+    def _precache(self, alignment, precache):
         P_cached = defaultdict(dict)
         tree = alignment.get_phylotree()
 
@@ -56,12 +59,12 @@ class Mayrose04(Scorer):
                     raise Exception("Duplicate node name: %s" % node.name)
                 terminals.add(node.name)
 
-        precached.names_map = dict((name, i) for i, name in enumerate(alignment.names))
-        precached.P_cached = P_cached
-        precached.tree = tree
+        precache.names_map = dict((name, i) for i, name in enumerate(alignment.names))
+        precache.P_cached = P_cached
+        precache.tree = tree
 
 
-    def score_col(self, col, precached):
+    def score_col(self, col, precache):
         """
         Compute this site's rate of evolution r as the expectation of the
         posterior: E[r|X] = \sum_r( P[X|r] P[r] r ) / \sum_r( P[X|r] P[r] ).
@@ -69,14 +72,9 @@ class Mayrose04(Scorer):
         Assume a fixed alpha until I get it working (leave the inference of the
         hyperparameter until later).
         """
-        if '-' in col:
-            # Return average rate if there exists a gap
-            # TODO
-            return self.DEFAULT_SCORE
-
-        names_map = precached.names_map
-        P_cached = precached.P_cached
-        tree = precached.tree
+        names_map = precache.names_map
+        P_cached = precache.P_cached
+        tree = precache.tree
         root = tree.clade
 
         # Compute numerator and denominator separately
@@ -84,6 +82,8 @@ class Mayrose04(Scorer):
         bot = 0
         for rate, prior in self.dgd.get_categories():
             likelihood = self._compute_subtree_likelihood(root, rate, col, names_map, P_cached)
+            # likelihood None only if column is all gaps
+            assert likelihood is not None
             joint = likelihood * prior
             top += joint * rate
             bot += joint
@@ -97,11 +97,19 @@ class Mayrose04(Scorer):
         """
         if node.is_terminal():
             aa = col[names_map[node.name]]
+            if aa == '-':
+                # Ignored gapped columns
+                return None
             P_node_given_parent = P_cached[rate][node][:,aa_to_index[aa]]
             return P_node_given_parent
         else:
-            child_P_cols = [self._compute_subtree_likelihood(child, rate, col, names_map, P_cached)
-                    for child in node.clades]
+            child_P_cols = []
+            for child in node.clades:
+                child_P_col = self._compute_subtree_likelihood(child, rate, col, names_map, P_cached)
+                if child_P_col is not None:
+                    child_P_cols.append(child_P_col)
+            if not child_P_cols:
+                return None
             P_children_given_node = np.matrix(np.prod(child_P_cols, axis=0))
             P_subtree_given_parent = P_cached[rate][node] * P_children_given_node
             return P_subtree_given_parent
