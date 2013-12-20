@@ -3,27 +3,26 @@ import numpy as np
 import os
 import sys
 from utils import gap_percentage, get_column, amino_acids, aa_to_index
-from substitution import SubstitutionModel
-
-
-# BLOSUM62 background distribution
-blosum_background_distr = [0.078, 0.051, 0.041, 0.052, 0.024, 0.034, 0.059, 0.083, 0.025, 0.062, 0.092, 0.056, 0.024, 0.044, 0.043, 0.059, 0.055, 0.014, 0.034, 0.072]
-
-current_dir = os.path.dirname(os.path.realpath(__file__))
+from substitution import SubstitutionModel, read_sim_matrix, read_bg_distribution
 
 
 ################################################################################
 # Get a Scorer by name
 ################################################################################
 
-#defaults
-def get_scorer(name, dat_file=None, s_matrix_file=None, bg_distribution_file=None):
+DEFAULT_SCORER = 'js_divergence'
+def parse_scorer_names(scorer_names):
+    if not scorer_names:
+        return [DEFAULT_SCORER]
+    return scorer_names
+
+def get_scorer(name, **params):
     try:
         scorer_cls = get_scorer_cls(name)
     except (ImportError, AttributeError), e:
         sys.stderr.write("%s: %s is not a valid scoring method.\n" % (e, name))
         return None
-    scorer = scorer_cls(dat_file, s_matrix_file, bg_distribution_file)
+    scorer = scorer_cls(**params)
     return scorer
 
 def get_scorer_cls(name):
@@ -33,168 +32,180 @@ def get_scorer_cls(name):
 
 
 ################################################################################
+# Helper classes
+################################################################################
+
+class ParamDef(object):
+
+    def __init__(self, name, default, parse_fxn=None, check_fxn=None, help=None):
+        self.name = name
+        self.parse_fxn = parse_fxn
+        self.check_fxn = check_fxn
+        self.default = self.parse(default)
+
+    def parse(self, *args):
+        if args:
+            val = args[0]
+            if self.parse_fxn:
+                val = self.parse_fxn(val)
+            if self.check_fxn and not self.check_fxn(val):
+                raise ValueError("Input %r is unacceptable for parameter %s"
+                        % (args[0], self.name))
+            return val
+        return self.default
+
+
+class Params(object):
+
+    def __init__(self, param_defs, *overrides):
+        """
+        Set attributes of this object to be the parameters in `param_defs`,
+        overriding default values with the values in `overrides`, preferring
+        earlier-specified overrides to later-specified ones.
+
+        Check that all parameters specified in the `overrides` dicts are
+        present in `param_defs`.
+        """
+        param_def_keys = set([pd.name for pd in param_defs])
+        for i, override in enumerate(overrides):
+            for k in override:
+                if k not in param_def_keys:
+                    raise AttributeError("Input param %s not allowed for this Scorer" % k)
+        for param_def in param_defs:
+            k = param_def.name
+            found = False
+            for override in overrides:
+                if k in override:
+                    setattr(self, k, param_def.parse(override[k]))
+                    found = True
+                    break
+            if not found:
+                setattr(self, k, param_def.parse())
+
+    def __str__(self):
+        return str(self.__dict__)
+
+    def __repr__(self):
+        return "Params(%s)" % self
+
+
+class Precache(object):
+    pass
+
+
+################################################################################
 # Scorer class
 ################################################################################
 
 class Scorer(object):
 
+    # Tunable parameters for scoring.
+    PARAMS = (
+        #dat matrix file of rate matrix AND bg distribution
+        ParamDef('dat_file', 'matrix/jtt-dcmut.dat.txt'),
+        #similarity matrix file, *.bla or *.qij
+        ParamDef('sim_matrix_file', 'matrix/blosum62.bla'),
+        #background distribution file, e.g., swissprot.distribution
+        ParamDef('bg_distribution_file', 'matrix/blosum62.distribution'),
+        #Number of residues on either side included in the window
+        ParamDef('window_size', 3, int, lambda x: x>=0),
+        #lambda for window heuristic linear combination
+        ParamDef('window_lambda', .5, float, lambda x: 0<=x<=1),
+        #Do not score columns that contain more than gap cutoff fraction gaps
+        ParamDef('gap_cutoff', .3, float, lambda x: 0<=x<=1),
+        #Print the z-score (over the alignment) of each column raw score
+        #penalize gaps by this amount
+        ParamDef('normalize_scores', False, bool),
+        #penalize gaps by this amount. The gap penalty used is
+        #the score times the fraction of non-gap positions in the column.
+        ParamDef('gap_penalty', 1, float),
+    )
+    PARAM_OVERRIDES = {}
+
+    # If there are errors.
+    DEFAULT_SCORE = 0
+
     USE_DAT_MATRIX_AND_DISTRIBUTION = False
     USE_SIM_MATRIX = False
     USE_BG_DISTRIBUTION = False
-    SKIP_ADJUSTMENTS = False
 
-    def __init__(self, dat_file=None, s_matrix_file=None, bg_distribution_file=None):
-        """
-        - sim_matrix: the similarity (scoring) matrix to be used. Not all
-          methods will use this parameter.
-        - bg_distribution: a list containing an amino acid probability distribution. Not
-          all methods use this parameter. The default is the blosum62 background, but
-          other distributions can be given.
-        """
+
+    def __init__(self, **params):
+        self.params = Params(self.PARAMS, params, self.PARAM_OVERRIDES)
+
         if self.USE_DAT_MATRIX_AND_DISTRIBUTION and \
                 (self.USE_SIM_MATRIX or self.USE_BG_DISTRIBUTION):
             raise Exception()
         # Data file from Kosiol & Goldman 04
         # http://www.ebi.ac.uk/goldman/dayhoff/
         if self.USE_DAT_MATRIX_AND_DISTRIBUTION:
-            self.sub_model = SubstitutionModel(dat_file)
+            self.sub_model = SubstitutionModel(self.params.dat_file)
         # Code from Capra & Singh 07
         if self.USE_SIM_MATRIX:
-            self.sim_matrix = read_scoring_matrix(s_matrix_file)
+            self.sim_matrix = read_sim_matrix(self.params.sim_matrix_file)
         # Code from Capra & Singh 07
         if self.USE_BG_DISTRIBUTION:
-            self.bg_distribution = get_distribution_from_file(bg_distribution_file)
+            self.bg_distribution = read_bg_distribution(self.params.bg_distribution_file)
 
-    def score(self, alignment, window_size, window_lambda,
-            gap_cutoff, gap_penalty, normalize_scores, **kwargs):
+
+    def score(self, alignment):
         """
-        - alignment: Alignment object
-        - window_size: set to >1 for window scoring
-        - window_lambda: for window method linear combinatioe
-        - gap_cutoff: columns with >gap_cutoff gaps are not scored
-        - gap_penalty: penalize gaps by this amount
-        - normalize_scores: let scores have mean 0, stdev 1 for this alignment
+        Score each site in the first sequence of `alignment`.  Performs computations
+        that are not specific to any site, and calls score_col() to perform the
+        site-secific computations.
+
+        Additional global computations can be performed by overriding _precache(),
+        see below.
+
+        @param alignment:
+            Alignment object
+        @return:
+            List of scores for each site
         """
+        # Precache computations shared among calls to score_col().
+        precached = Precache()
+        self._precache(alignment, precached)
+
+        # Main computation.
         scores = []
         for i in range(len(alignment.msa[0])):
             col = get_column(i, alignment.msa)
 
             if len(col) == len(alignment.msa):
-                if self.SKIP_ADJUSTMENTS or gap_percentage(col) <= gap_cutoff:
-                    scores.append(self.score_col(col, alignment.seq_weights, gap_penalty, alignment))
+                if self.params.gap_cutoff == 1 or \
+                        gap_percentage(col) <= self.params.gap_cutoff:
+                    scores.append(self.score_col(col, precached))
                 else:
-                    #XXX: used to be -1000. I adjusted to 0 so the output looks nicer, I think?
-                    scores.append(0)
+                    scores.append(self.DEFAULT_SCORE)
             else:
                 sys.stderr.write("Missing sequences in column %d\n" % i)
-        if not self.SKIP_ADJUSTMENTS and window_size > 0:
-            scores = window_score(scores, window_size, window_lambda)
-        if not self.SKIP_ADJUSTMENTS and normalize_scores:
+        #print "Mean score: %f" % np.mean(scores)
+        if self.params.window_size > 0:
+            scores = window_score(scores, self.params.window_size,
+                    self.params.window_lambda)
+        if self.params.normalize_scores:
             scores = calc_z_scores(scores, -999)
         return scores
 
-    def score_col(self, col, seq_weights, gap_penalty=1, alignment=None):
+
+    def _precache(self, alignment, precached):
+        """ 
+        Override this function to pre-cache computations shared among calls
+        to score_col().  Store any pre-cached computations as attributes of
+        `precached`.
         """
-        - col: the column to be scored.
-        - seq_weights: an array of floats that is used to weight the contribution
-          of each seqeuence. If the len(seq_weights) != len(col), then every sequence
-          gets a weight of one.
-        - gap_penalty: a binary variable: 0 for no gap penalty and 1
-          for gap penalty. The default is to use a penalty. The gap penalty used is
-          the score times the fraction of non-gap positions in the column.
+        return
+
+
+    def score_col(self, col, precached):
+        """
+        @param col:
+            the column to be scored.
+        @param precached:
+            object whose attributes are precached computations specific to this
+            alignment.
         """
         raise NotImplementedError()
-
-
-################################################################################
-# Scorer inputs
-################################################################################
-
-def read_scoring_matrix(sm_file):
-    """
-    Read in a scoring matrix from a file, e.g., blosum80.bla, and return it
-    as an array.
-    """
-    if not sm_file:
-        sm_file = "matrix/blosum62.bla"
-
-    aa_index = 0
-    first_line = 1
-    row = []
-    list_sm = [] # hold the matrix in list form
-
-    try:
-        matrix_file = open(sm_file, 'r')
-        for line in matrix_file:
-            if line[0] != '#' and first_line:
-                first_line = 0
-                if len(amino_acids) == 0:
-                    for c in line.split():
-                        aa_to_index[string.lower(c)] = aa_index
-                        amino_acids.append(string.lower(c))
-                        aa_index += 1
-
-            elif line[0] != '#' and first_line == 0:
-                if len(line) > 1:
-                    row = line.split()
-                    list_sm.append(row)
-        matrix_file.close()
-    except IOError, e:
-        print "Could not load similarity matrix: %s. Using identity matrix..." % sm_file
-        # Return identity matrix
-        for i in xrange(20):
-            row = []
-            for j in xrange(20):
-                if i == j:
-                    row.append(1)
-                else:
-                    row.append(0)
-            list_sm.append(row)
-        return list_sm
-
-    # if matrix is stored in lower tri form, copy to upper
-    if len(list_sm[0]) < 20:
-        for i in range(0,19):
-            for j in range(i+1, 20):
-                list_sm[i].append(list_sm[j][i])
-
-    for i in range(len(list_sm)):
-        for j in range(len(list_sm[i])):
-            list_sm[i][j] = float(list_sm[i][j])
-
-    return list_sm
-
-
-def get_distribution_from_file(fname):
-    """
-    Read an amino acid distribution from a file. The probabilities should
-    be on a single line separated by whitespace in alphabetical order as in
-    amino_acids above. # is the comment character.
-    """
-    if not fname:
-        fname = "matrix/blosum62.distribution"
-
-    distribution = []
-    try:
-        f = open(fname)
-        for line in f:
-            if line[0] == '#': continue
-            line = line[:-1]
-            distribution = line.split()
-            distribution = map(float, distribution)
-        f.close()
-
-    except IOError, e:
-        print e, "Using default (BLOSUM62) background."
-        return []
-
-    # use a range to be flexible about round off
-    if .997 > sum(distribution) or sum(distribution) > 1.003:
-        print "Distribution does not sum to 1. Using default (BLOSUM62) background."
-        print sum(distribution)
-        return []
-
-    return distribution
 
 
 ################################################################################

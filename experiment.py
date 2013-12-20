@@ -1,12 +1,11 @@
-#! /usr/bin/python
-
+import argparse
+import multiprocessing
 import numpy as np
 import os
 import sys
 
 from alignment import Alignment
-from singlerun import run_scorers
-from scorer import get_scorer
+from scorer import get_scorer, parse_scorer_names
 from utils import get_column
 
 
@@ -78,7 +77,7 @@ DATA_CONFIGS = {
 # Run experiments
 ################################################################################
 
-def run_experiments(dataset='all', scorer_names='js_divergence', **kwargs):
+def run_experiments(dataset='all', scorer_names='js_divergence', limit=0, **kwargs):
     """
     Iterator that returns lists of pairs of observed/expected scores for each
     column in a file, for all alignment files in the dataset requested.  Each
@@ -101,34 +100,79 @@ def run_experiments(dataset='all', scorer_names='js_divergence', **kwargs):
         scorer_names = (scorer_names,)
     scorers = [get_scorer(s) for s in scorer_names]
 
-    count_scored = 0
+    # Assemble list of files to score.
+    filenames_scoring = get_filenames(data_configs, limit)
+    inputs = ((a, b, c, scorers, kwargs) for a,b,c in filenames_scoring)
+
+    if len(filenames_scoring) == 1:
+        yield run_experiment(inputs.next())
+        return
+
+    pool = multiprocessing.Pool(min(len(filenames_scoring), 8))
+    it = pool.imap_unordered(run_experiment, inputs)
+    pool.close()
+    for result in it:
+        yield result
+
+
+def get_filenames(data_configs, limit):
+    count_scoring = 0
     count_missing = 0
+    filenames_scoring = []
     for data_config in data_configs:
         aln_dir = os.path.join(DATA_HOME_DIR, data_config['aln_dir'])
-        for root, dirs, files in os.walk(aln_dir):
-            for file in files:
-                if not file.endswith('.aln'):
+        for root, _, filenames in os.walk(aln_dir):
+            for filename in filenames:
+                if not filename.endswith('.aln'):
                     continue
-                align_file = os.path.join(root, file)
+                align_file = os.path.join(root, filename)
                 # Get the 'tail' of the path after aln_dir
-                file = os.path.join(root, data_config['aln_to_test'](file))[len(aln_dir)+1:]
-                test_file = os.path.join(DATA_HOME_DIR, data_config['test_dir'], file)
+                filename = os.path.join(root, data_config['aln_to_test'](filename))[len(aln_dir)+1:]
+                test_file = os.path.join(DATA_HOME_DIR, data_config['test_dir'], filename)
                 if not os.path.exists(test_file):
                     # No test file, so don't even bother scoring.
                     count_missing += 1
                     continue
-                count_scored += 1
+                filenames_scoring.append((align_file, test_file, data_config['parse_fields_func']))
+                count_scoring += 1
+                if limit and count_scoring == limit:
+                    sys.stderr.write("Scoring %d alignments, missing testfiles for %d alignments\n"
+                        % (count_scoring, count_missing))
+                    return filenames_scoring
+    sys.stderr.write("Scoring %d alignments, missing testfiles for %d alignments\n"
+        % (count_scoring, count_missing))
+    return filenames_scoring
 
-                alignment = Alignment(align_file)
-                scores = run_scorers(alignment, scorers, **kwargs)
-                actual = parse_testset(test_file, data_config['parse_fields_func'], alignment)
 
-                yield [(x,y) for x,y in zip(scores, actual) if y is not None]
-    sys.stderr.write("Scored %d alignments, missing testfiles for %d alignments\n"
-        % (count_scored, count_missing))
+def run_experiment(args):
+    """
+    Run scorers on one aln file.  This is a helper for multithreading the
+    scoring of each aln file.
+    """
+    align_file, test_file, parse_fields_func, scorers, kwargs = args
+    alignment = Alignment(align_file)
+    all_scores = run_scorers(alignment, scorers, **kwargs)
+    actual = parse_testset(test_file, parse_fields_func, alignment)
+    return [(x,y) for x,y in zip(all_scores, actual) if y is not None]
 
+
+
+
+################################################################################
+# For testing only
+################################################################################
 
 if __name__ == "__main__":
-    for exp in run_experiments():
-        print exp[0]
-        break
+    parser = argparse.ArgumentParser(description="Run experiments of computing conservation scores on a set of alignment files and comparing those results with the test data.")
+    parser.add_argument('-n', dest='limit', type=int, default=1,
+        help="max number of alignment files to run the experiments on.")
+    parser.add_argument('-s', dest='scorer_names', action='append', default=[],
+        help="conservation estimation method")
+
+    args = parser.parse_args()
+    scorer_names = parse_scorer_names(args.scorer_names)
+
+    for exp in run_experiments(scorer_names=scorer_names, limit=args.limit):
+        import ipdb
+        ipdb.set_trace()
+        print exp

@@ -1,17 +1,5 @@
 import os
-import sys
 from Bio import Phylo, SeqIO
-
-
-#####
-# Tree manipulation tools
-#####
-
-def traverse_postorder(tree):
-    """
-    Traverse the nodes of `tree` in postorder, returning an iterator
-    on (node1, node2, branchlength) tuples.
-    """
 
 
 #####
@@ -36,26 +24,31 @@ def convert_fname_aln2tree(fname_aln):
     return fname_aln[:-3] + "phy_phyml_tree.txt"
 
 def run_phyml(fname_phy, n_bootstrap):
-    os.system("phyml -i %s -d aa -b %d" % (fname_phy, n_bootstrap))
+    os.system("phyml -i %s -d aa -b %d --quiet --no_memory_check" % (fname_phy, n_bootstrap))
 
-def compute_tree(fname_aln, n_bootstrap=5, overwrite=False):
+def compute_tree(fname_aln, n_bootstrap=0, overwrite=False):
     """
     Use PhyML to compute the tree for fname_aln.
     Does not compute tree if treefile exists and overwrite=False (default).
     Return the filename of the tree.
     """
     fname_tree = convert_fname_aln2tree(fname_aln)
-    if overwrite or not os.path.exists(fname_tree):
+    if overwrite or not os.path.exists(fname_tree) or not os.path.getsize(fname_tree):
         fname_phy = convert_fname_aln2phy(fname_aln)
-        if not os.path.exists(fname_phy):
+        if not os.path.exists(fname_phy) or not os.path.getsize(fname_phy):
             convert_file_aln2phy(fname_aln)
         run_phyml(fname_phy, n_bootstrap)
     return fname_tree
 
 def get_tree(fname_aln, n_bootstrap=0, overwrite=False):
+    """
+    Get the phylo tree corresponding to `fname_aln`.  If no tree, compute one
+    and cache to disk.
+    """
     fname_tree = compute_tree(fname_aln, n_bootstrap, overwrite)
     return Phylo.read(fname_tree, "newick")
 
 
 if __name__ == "__main__":
+    import sys
     print get_tree(sys.argv[1])

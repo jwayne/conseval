@@ -1,21 +1,24 @@
+"""
+Jensen-Shannon Divergence (Capra and Singh 07)
+Code copyright Tony Capra 2007.
+"""
 import math
 from scorer import Scorer
-from utils import *
+from utils import weighted_freq_count_pseudocount, weighted_gap_penalty, PSEUDOCOUNT
 
-
-################################################################################
-# Jensen-Shannon Divergence
-################################################################################
 
 class JsDivergence(Scorer):
 
     USE_BG_DISTRIBUTION = True
 
-    def score_col(self, col, seq_weights, gap_penalty=1, alignment=None):
-        """Return the Jensen-Shannon Divergence for the column with the background
-        distribution bg_distr."""
+    def score_col(self, col, alignment):
+        """
+        Return the Jensen-Shannon Divergence for the column with the background
+        distribution bg_distr.
+        """
 
         distr = self.bg_distribution[:]
+        seq_weights = alignment.get_seq_weights()
 
         fc = weighted_freq_count_pseudocount(col, seq_weights, PSEUDOCOUNT)
 

@@ -1,15 +1,16 @@
+import random
 from phylotree import get_tree
 from utils import aa_to_index, amino_acids, iupac_alphabet
 
 
 class Alignment(object):
 
-    #defaults
-    def __init__(self, align_file, use_seq_weights=True):
+    MAX_SEQUENCES = 50
+
+    def __init__(self, align_file):
         """
         Loads/calculates input data for `align_file`.  Sets:
         - self.msa: List of equal-length lists of nucleotides/AAs
-        - self.seq_weights: Weight for each column
         """
         # Ingest alignment
         try:
@@ -30,27 +31,39 @@ class Alignment(object):
         if len(set(names)) != len(names):
             raise ValueError("Sequences have duplicate names.")
 
-        # Ingest sequence weights
-        seq_weights = []
-        if use_seq_weights:
-            align_suffix = align_file.split('.')[-1]
-            seq_weights = read_sequence_weights(align_file.replace('.%s' % align_suffix, '.weights'))
-            if not seq_weights:
-                seq_weights = calculate_sequence_weights(msa)
-        if len(seq_weights) != len(msa):
-            # Unclear if you should raise an error if seq weights sucks and use_seq_weights is True...
-            seq_weights = [1.] * len(msa)
+        # Filter alignment if too many sequences
+        if len(msa) > self.MAX_SEQUENCES:
+            import ipdb
+            ipdb.set_trace()
+            random.seed(1000)
+            inds = random.sample(range(1,len(msa)), self.MAX_SEQUENCES-1)
+            names = [names[0]] + [names[ind] for ind in inds]
+            msa = [msa[0]] + [msa[ind] for ind in inds]
 
         self.align_file = align_file
         self.names = names
         self.msa = msa
-        self.seq_weights = seq_weights
         self._phylotree = None
+        self._seq_weights = None
 
     def get_phylotree(self):
+        """
+        Cached phylogenetic tree.
+        """
         if not self._phylotree:
             self._phylotree = get_tree(self.align_file)
         return self._phylotree
+
+    def get_seq_weights(self):
+        """
+        Cached sequence weights for each column.
+        an array of floats that is used to weight the contribution of each
+        seqeuence. If the len(seq_weights) != len(col), then every sequence
+        gets a weight of one.
+        """
+        if not self._seq_weights:
+            self._seq_weights = get_seq_weights(self.align_file, self.msa)
+        return self._seq_weights
 
 
 ################################################################################
@@ -110,47 +123,3 @@ def read_clustal_alignment(filename):
                 else:
                     msa[names.index(t[0])] += t[1].upper().replace('B', 'D').replace('Z', 'Q').replace('X','-').replace('\r', '')
     return names, msa
-
-
-def read_sequence_weights(fname):
-    """Read in a sequence weight file f and create sequence weight list.
-    The weights are in the same order as the sequences each on a new line. """
-    seq_weights = []
-    try:
-        f = open(fname)
-        for line in f:
-            l = line.split()
-            if line[0] != '#' and len(l) == 2:
-                seq_weights.append(float(l[1]))
-        f.close()
-    except IOError, e:
-        pass
-    return seq_weights
-
-
-def calculate_sequence_weights(msa):
-    """ Calculate the sequence weights using the Henikoff '94 method
-    for the given msa. """
-
-    seq_weights = [0.] * len(msa)
-    for i in range(len(msa[0])):
-        freq_counts = [0] * len(amino_acids)
-
-        col = []
-        for j in range(len(msa)):
-            if msa[j][i] != '-': # ignore gaps
-                freq_counts[aa_to_index[msa[j][i]]] += 1
-
-        num_observed_types = 0
-        for j in range(len(freq_counts)):
-            if freq_counts[j] > 0: num_observed_types +=1
-
-        for j in range(len(msa)):
-            d = freq_counts[aa_to_index[msa[j][i]]] * num_observed_types
-            if d > 0:
-                seq_weights[j] += 1. / d
-
-    for w in range(len(seq_weights)):
-        seq_weights[w] /= len(msa[0])
-
-    return seq_weights

@@ -1,18 +1,18 @@
+"""
+Von Neumann Entropy (Caffrey et al 04)
+Code copyright Tony Capra 2007.
+"""
 import math
 import numpy as np
 from scorer import Scorer
-from utils import *
+from utils import weighted_gap_penalty
 
-
-################################################################################
-# von Neumann Entropy
-################################################################################
 
 class VnEntropy(Scorer):
 
     USE_SIM_MATRIX = True
 
-    def score_col(self, col, seq_weights, gap_penalty=1, alignment=None):
+    def score_col(self, col, alignment):
         """ Calculate the von Neuman Entropy as described in Caffrey et al. 04.
         This code was adapted from the implementation found in the PFAAT project
         available on SourceForge."""

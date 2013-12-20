@@ -1,11 +1,11 @@
+"""
+Property Entropy (Mirny and Shakhnovich 95, Valdar and Thornton 01)
+Code copyright Tony Capra 2007.
+"""
 import math
 from scorer import Scorer
 from utils import *
 
-
-################################################################################
-# Property Entropy
-################################################################################
 
 class PropertyEntropy(Scorer):
 

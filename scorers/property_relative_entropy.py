@@ -1,20 +1,22 @@
+"""
+Property Relative Entropy (Williamson 95)
+Code copyright Tony Capra 2007.
+"""
 import math
 from scorer import Scorer
-from utils import *
+from utils import weighted_freq_count_pseudocount, weighted_gap_penalty, PSEUDOCOUNT
 
-
-################################################################################
-# Property Relative Entropy
-################################################################################
 
 class PropertyRelativeEntropy(Scorer):
 
     USE_BG_DISTRIBUTION = True
 
-    def score_col(self, col, seq_weights, gap_penalty=1, alignment=None):
-        """Calculate the relative entropy of a column col relative to a
+    def score_col(self, col, alignment):
+        """
+        Calculate the relative entropy of a column col relative to a
         partition of the amino acids. Similar to Williamson '95.  See shannon_entropy()
-        for more general info. """
+        for more general info.
+        """
 
         # Mirny and Shakn. '99
         #property_partition = [['A','V','L','I','M','C'], ['F','W','Y','H'], ['S','T','N','Q'], ['K','R'], ['D', 'E'], ['G', 'P'], ['-']]
@@ -29,6 +31,7 @@ class PropertyRelativeEntropy(Scorer):
         else:
             prop_bg_freq = [0.248, 0.092, 0.114, 0.075, 0.132, 0.111, 0.161, 0.043, 0.024, 0.000] # from BL62
 
+        seq_weights = alignment.get_seq_weights()
         #fc = weighted_freq_count_ignore_gaps(col, seq_weights)
         fc = weighted_freq_count_pseudocount(col, seq_weights, PSEUDOCOUNT)
 
