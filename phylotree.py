@@ -43,8 +43,6 @@ def _compute_phylotree(alignment, fname_phy, fname_tree, n_bootstrap):
         records.append(SeqRecord(Seq(row), id=name, description=name))
     with open(fname_phy, "w") as f_out:
         SeqIO.write(records, f_out, "phylip-relaxed")
-    import ipdb
-    ipdb.set_trace()
     os.system("phyml -i %s -d aa -b %d --quiet --no_memory_check" % (fname_phy, n_bootstrap))
     return read_phylotree(fname_tree)
 
