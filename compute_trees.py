@@ -6,7 +6,7 @@ import sys
 import time
 
 from alignment import Alignment
-from utils.parallel import parallelize
+from utils import parallelize
 
 
 def compute_tree(fn):
@@ -17,7 +17,7 @@ def compute_tree(fn):
 
 
 def compute_trees(fns, out_file):
-    it = parallelize(compute_tree, fns, timeout=1800)
+    it = parallelize.imap_unordered(compute_tree, fns, timeout=1800)
 
     f = open(out_file, 'w')
     for arg, result in it:

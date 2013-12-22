@@ -8,6 +8,7 @@ import sys
 from alignment import Alignment
 from scorer import get_scorer, parse_scorer_names
 from utils.bio import get_column
+from utils import parallelize
 
 
 ################################################################################
@@ -117,7 +118,7 @@ def run_experiments(data_config='all', scorer_config={'js_divergence':{}}, limit
         yield run_experiment(args.next())
         return
 
-    it = parallelize(run_experiment, args)
+    it = parallelize.imap_unordered(run_experiment, args)
     for result in it:
         yield result
 

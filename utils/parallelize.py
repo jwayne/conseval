@@ -18,7 +18,7 @@ def _spawn(f):
             q_out.put((i,f(x)))
     return fun
 
-def parallelize(f, args, nprocs=None, timeout=None):
+def imap_unordered(f, args, nprocs=None, timeout=None):
     """
     Spawn `nprocs` processes to run `f` on the list of inputs in `args`.
     Returns an iterator on pairs (argument to f, results from f), returned
@@ -28,7 +28,7 @@ def parallelize(f, args, nprocs=None, timeout=None):
     returned if the timeout is exceeded for any one run of the function.
 
     @param f:
-        Function to parallelize.  Must take 1 argument.
+        Function to imap_unordered.  Must take 1 argument.
     @param args:
         List of arguments to pass to `f`.
     @param timeout:
@@ -98,12 +98,12 @@ def expire_after(timeout):
 #####
 
 if __name__ == '__main__':
-    for arg, res in parallelize(lambda i:i*2, [1,2,3,4,6,7,8]):
+    for arg, res in imap_unordered(lambda i:i*2, [1,2,3,4,6,7,8]):
         print arg, res
     print ""
     import time, os
     def test(x):
         time.sleep(x)
         return os.getpid()
-    for arg, res in parallelize(test, [1,2,3,6,7,8], nprocs=2, timeout=5):
+    for arg, res in imap_unordered(test, [1,2,3,6,7,8], nprocs=2, timeout=5):
         print arg, res
