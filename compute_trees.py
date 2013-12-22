@@ -6,7 +6,7 @@ import sys
 import time
 
 from alignment import Alignment
-from utils_parallel import parallelize
+from utils.parallel import parallelize
 
 
 def compute_tree(fn):

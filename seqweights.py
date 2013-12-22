@@ -1,4 +1,4 @@
-from utils import amino_acids, aa_to_index
+from utils.bio import amino_acids, aa_to_index
 
 #####
 # Conversion tools

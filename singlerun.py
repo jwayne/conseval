@@ -3,7 +3,7 @@
 import argparse, math, os, sys
 from alignment import Alignment
 from scorer import get_scorer, parse_scorer_names, DEFAULT_SCORER
-from utils import get_column
+from utils.bio import get_column
 
 
 ################################################################################
@@ -67,6 +67,7 @@ def parse_args():
     parser.add_argument('-x', dest='extra_inputs', action='append', default=[],
         help="extra inputs associcated with align_file, can specify multiple. Specify as '-x inputName=inputValue', e.g. '-x tree_file=tree.txt'")
 
+    # TODO: accept a single scorer only? leave running multiple scorers to experiment.py?
     parser.add_argument('-s', dest='scorer_names', action='append', default=[],
         help="conservation estimation method, can specify multple. Default='%s'" % DEFAULT_SCORER)
     parser.add_argument('-p', dest='params', action='append', default=[],

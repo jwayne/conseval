@@ -5,7 +5,7 @@ Code copyright Tony Capra 2007.
 import math
 import numpy as np
 from scorer import Scorer
-from utils import aa_to_index, weighted_gap_penalty
+from utils.bio import aa_to_index, weighted_gap_penalty
 
 
 class VnEntropy(Scorer):

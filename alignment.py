@@ -2,7 +2,7 @@ import random
 import os
 from phylotree import get_phylotree, read_phylotree
 from seqweights import get_seq_weights
-from utils import iupac_alphabet
+from utils.bio import iupac_alphabet
 
 
 class Alignment(object):

@@ -2,11 +2,12 @@ import argparse
 import multiprocessing
 import numpy as np
 import os
+import random
 import sys
 
 from alignment import Alignment
 from scorer import get_scorer, parse_scorer_names
-from utils import get_column
+from utils.bio import get_column
 
 
 ################################################################################
@@ -77,40 +78,46 @@ DATA_CONFIGS = {
 # Run experiments
 ################################################################################
 
-def run_experiments(dataset='all', scorer_names='js_divergence', limit=0, **kwargs):
+def run_experiments(data_config='all', scorer_config={'js_divergence':{}}, limit=0):
     """
     Iterator that returns lists of pairs of observed/expected scores for each
-    column in a file, for all alignment files in the dataset requested.  Each
+    column in a file, for all alignment files in the datasets requested.  Each
     item in the iterator has the form:
         [( (score1, score2, score3, ...), expected_score ) for col1,
          ( (score1, score2, score3, ...), expected_score ) for col2,
          ...
         ]
+    @param data_config:
+        'all', dataset to use, or list of datasets to use
+    @param scorer_config:
+        Dict mapping scorer names to their desired parameters
+    @param limit:
+        Max number of alignments to score
     """
     # Determine which sets of data to run experiments on
-    if dataset == 'all':
+    if data_config == 'all':
         data_configs = DATA_CONFIGS.values()
-    elif type(dataset) == str:
-        data_configs = (DATA_CONFIGS[dataset],)
+    elif type(data_config) == str:
+        data_configs = (DATA_CONFIGS[data_config],)
     else:
-        data_configs = [DATA_CONFIGS[ds] for ds in dataset]
+        data_configs = [DATA_CONFIGS[ds] for ds in data_config]
 
     # Determine which scorer to run
-    if type(scorer_names) == str:
-        scorer_names = (scorer_names,)
-    scorers = [get_scorer(s) for s in scorer_names]
+    scorers = []
+    for scorer_name in sorted(scorer_config.keys()):
+        scorer_params = scorer_config[scorer_name]
+        scorers.append(get_scorer(scorer_name, **scorer_params))
 
     # Assemble list of files to score.
-    filenames_scoring = get_filenames(data_configs, limit)
-    inputs = ((a, b, c, scorers, kwargs) for a,b,c in filenames_scoring)
+    filenames = get_filenames(data_configs, limit)
+    args = (fn + (scorers,) for fn in filenames)
 
-    if len(filenames_scoring) == 1:
-        yield run_experiment(inputs.next())
+    # Shortcut if no parallelization
+    if len(filenames) == 1:
+        yield run_experiment(args.next())
         return
 
-    pool = multiprocessing.Pool(min(len(filenames_scoring), 8))
-    it = pool.imap_unordered(run_experiment, inputs)
-    pool.close()
+    it = parallelize(run_experiment, args)
     for result in it:
         yield result
 
@@ -118,30 +125,30 @@ def run_experiments(dataset='all', scorer_names='js_divergence', limit=0, **kwar
 def get_filenames(data_configs, limit):
     count_scoring = 0
     count_missing = 0
-    filenames_scoring = []
+    filenames = []
     for data_config in data_configs:
         aln_dir = os.path.join(DATA_HOME_DIR, data_config['aln_dir'])
-        for root, _, filenames in os.walk(aln_dir):
-            for filename in filenames:
-                if not filename.endswith('.aln'):
+        for root, _, files in os.walk(aln_dir):
+            for file in files:
+                if not file.endswith('.aln'):
                     continue
-                align_file = os.path.join(root, filename)
+                align_file = os.path.join(root, file)
                 # Get the 'tail' of the path after aln_dir
-                filename = os.path.join(root, data_config['aln_to_test'](filename))[len(aln_dir)+1:]
-                test_file = os.path.join(DATA_HOME_DIR, data_config['test_dir'], filename)
+                file = os.path.join(root, data_config['aln_to_test'](file))[len(aln_dir)+1:]
+                test_file = os.path.join(DATA_HOME_DIR, data_config['test_dir'], file)
                 if not os.path.exists(test_file):
                     # No test file, so don't even bother scoring.
                     count_missing += 1
                     continue
-                filenames_scoring.append((align_file, test_file, data_config['parse_fields_func']))
+                filenames.append((align_file, test_file, data_config['parse_fields_func']))
                 count_scoring += 1
-                if limit and count_scoring == limit:
-                    sys.stderr.write("Scoring %d alignments, missing testfiles for %d alignments\n"
-                        % (count_scoring, count_missing))
-                    return filenames_scoring
-    sys.stderr.write("Scoring %d alignments, missing testfiles for %d alignments\n"
-        % (count_scoring, count_missing))
-    return filenames_scoring
+    sys.stderr.write("Found %d alignments w/ testfiles, %d alignments w/o testfiles\n"
+            % (count_scoring, count_missing))
+    if len(filenames) > limit:
+        random.seed(1000)
+        filenames = random.sample(filenames, limit)
+    sys.stderr.write("Scoring %d alignments" % len(filenames))
+    return filenames
 
 
 def run_experiment(args):
@@ -149,9 +156,19 @@ def run_experiment(args):
     Run scorers on one aln file.  This is a helper for multithreading the
     scoring of each aln file.
     """
-    align_file, test_file, parse_fields_func, scorers, kwargs = args
+    align_file, test_file, parse_fields_func, scorers = args
     alignment = Alignment(align_file)
-    all_scores = run_scorers(alignment, scorers, **kwargs)
+    all_scores = []
+    for scorer in scorers:
+        try:
+            scores = scorer.score(alignment)
+        except Exception, e:
+            import traceback
+            sys.stderr.write("Error scoring %s via %s\n" %
+                (alignment.align_file, type(scorer).__name__))
+            traceback.print_exc()
+            continue
+        all_scores.append(scores)
     actual = parse_testset(test_file, parse_fields_func, alignment)
     return [(x,y) for x,y in zip(all_scores, actual) if y is not None]
 

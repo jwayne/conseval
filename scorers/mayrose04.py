@@ -8,8 +8,8 @@ from collections import defaultdict
 import numpy as np
 
 from scorer import Scorer, ParamDef
-from utils import aa_to_index
-from utils_gamma import DiscreteGammaDistribution
+from utils.bio import aa_to_index
+from utils.gamma import DiscreteGammaDistribution
 
 
 class Mayrose04(Scorer):

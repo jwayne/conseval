@@ -4,7 +4,7 @@ Code copyright Tony Capra 2007.
 """
 import math
 from scorer import Scorer
-from utils import (aa_to_index,
+from utils.bio import (aa_to_index,
                    weighted_freq_count_pseudocount, weighted_gap_penalty, PSEUDOCOUNT)
 
 

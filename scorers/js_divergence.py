@@ -4,7 +4,7 @@ Code copyright Tony Capra 2007.
 """
 import math
 from scorer import Scorer
-from utils import weighted_freq_count_pseudocount, weighted_gap_penalty, PSEUDOCOUNT
+from utils.bio import weighted_freq_count_pseudocount, weighted_gap_penalty, PSEUDOCOUNT
 
 
 class JsDivergence(Scorer):

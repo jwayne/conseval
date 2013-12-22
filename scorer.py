@@ -4,7 +4,7 @@ import os
 import sys
 
 from params import ParamDef, Params
-from utils import gap_percentage, get_column, amino_acids, aa_to_index
+from utils.bio import gap_percentage, get_column, amino_acids, aa_to_index
 from substitution import SubstitutionModel, read_sim_matrix, read_bg_distribution
 
 

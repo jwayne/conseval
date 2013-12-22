@@ -38,7 +38,7 @@ def parallelize(f, args, nprocs=None, timeout=None):
     q_out = multiprocessing.Queue()
 
     if not nprocs:
-        nprocs = min(len(args), multiprocessing.cpu_count())
+        nprocs = multiprocessing.cpu_count()
     if timeout:
         f = expire_after(timeout)(f)
     procs = [multiprocessing.Process(target=_spawn(f), args=(q_in,q_out))
