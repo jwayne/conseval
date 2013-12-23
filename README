@@ -14,12 +14,12 @@ This code supports the following functions:
   FASTA files using multiple methods.  Example usage:
 
   # Compute conservation rates using the default mayrose04 method.
-  ./singlerun.py alignment.aln
+  ./singlerun.py examples/1dup_A_hssp-filtered.aln
 
   # Compute conservation rates using the mayrose04 method and also
   # compute conservation scores using the Jensen-Shannon divergence
   # method.
-  ./singlerun.py alignment.aln -s mayrose04 -s js_divergence
+  ./singlerun.py examples/1dup_A_hssp-filtered.aln -s mayrose04 -s js_divergence
 
   # Help
   ./singlerun.py -h
