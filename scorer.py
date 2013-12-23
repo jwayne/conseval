@@ -1,5 +1,6 @@
 import math
 import numpy as np
+import re
 import os
 import sys
 
@@ -11,12 +12,6 @@ from substitution import SubstitutionModel, read_sim_matrix, read_bg_distributio
 ################################################################################
 # Get a Scorer by name
 ################################################################################
-
-DEFAULT_SCORER = 'js_divergence'
-def parse_scorer_names(scorer_names):
-    if not scorer_names:
-        return [DEFAULT_SCORER]
-    return scorer_names
 
 def get_scorer(name, **params):
     try:
@@ -52,11 +47,14 @@ class Scorer(object):
     # can be extended, see scorers/mayrose04.py for an example.
     PARAMS = Params(
         #dat matrix file of rate matrix AND bg distribution
-        ParamDef('sub_model_file', 'matrix/jtt-dcmut.dat.txt'),
+        ParamDef('sub_model_file', 'matrix/jtt-dcmut.dat.txt',
+            lambda x: os.path.abspath(x)),
         #similarity matrix file, *.bla or *.qij
-        ParamDef('sim_matrix_file', 'matrix/blosum62.bla'),
+        ParamDef('sim_matrix_file', 'matrix/blosum62.bla',
+            lambda x: os.path.abspath(x)),
         #background distribution file, e.g., swissprot.distribution
-        ParamDef('bg_distribution_file', 'matrix/blosum62.distribution'),
+        ParamDef('bg_distribution_file', 'matrix/blosum62.distribution',
+            lambda x: os.path.abspath(x)),
         #Number of residues on either side included in the window
         ParamDef('window_size', 3, int, lambda x: x>=0),
         #lambda for window heuristic linear combination
@@ -72,7 +70,7 @@ class Scorer(object):
     )
 
     # If there are errors.
-    DEFAULT_SCORE = 0
+    DEFAULT_SCORE = 0.
 
     USE_DAT_MATRIX_AND_DISTRIBUTION = False
     USE_SIM_MATRIX = False
@@ -80,6 +78,9 @@ class Scorer(object):
 
 
     def __init__(self, **params):
+        s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', type(self).__name__)
+        self.name = re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
+
         self.PARAMS.set_params(self, params)
 
         if self.USE_DAT_MATRIX_AND_DISTRIBUTION and \
@@ -95,6 +96,10 @@ class Scorer(object):
         # Code from Capra & Singh 07
         if self.USE_BG_DISTRIBUTION:
             self.bg_distribution = read_bg_distribution(self.bg_distribution_file)
+
+
+    def get_params(self):
+        return self.PARAMS.get_params(self)
 
 
     def score(self, alignment):

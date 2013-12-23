@@ -98,11 +98,17 @@ class Params(object):
             else:
                 setattr(owner, k, param_def.parse())
 
+    def get_params(self, owner):
+        params = {}
+        for param_def in self.param_defs:
+            k = param_def.name
+            if not hasattr(owner, k):
+                raise AttributError("Param owner does not have attribute '%s' set" % k)
+            params[k] = getattr(owner, k)
+        return params
+
     def __str__(self):
         return str(self.param_defs)
 
     def __repr__(self):
         return "Params(%s)" % self
-
-
-

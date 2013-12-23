@@ -1,55 +1,68 @@
-Some code based off Tony Capra 2007.
+===Dependencies===
 
-This code supports the paper: 
+Python 2.6.*, 2.7.*
+numpy
+biopython
+PhyML (for computing phylogenetic trees)
 
+
+===Getting started===
+
+This code supports the following functions:
+
+- Computing conservation rates on alignments stored as CLUSTAL or
+  FASTA files using multiple methods.  Example usage:
+
+  # Compute conservation rates using the default mayrose04 method.
+  ./singlerun.py alignment.aln
+
+  # Compute conservation rates using the mayrose04 method and also
+  # compute conservation scores using the Jensen-Shannon divergence
+  # method.
+  ./singlerun.py alignment.aln -s mayrose04 -s js_divergence
+
+  # Help
+  ./singlerun.py -h
+
+  Available inference methods can be found in 'scorers/'.  See
+  the paper (TBD) for a description of these methods.
+
+- (TBD)
+  Running experiments on the efficacy of the conservation rate
+  inference methods available in this package.  These experiments
+  compute conservation rates of alignments in parallel, and assess
+  the results with test data paired with the input alignments via
+  (TBD) methods.  Example usage:
+
+  ./experiment.py -d all -s mayrose04
+
+- Computing phylogenetic trees for all alignment files in a given
+  directory, in parallel.
+
+===Advanced customization===
+
+(TBD)
+
+The substitution rate matrix files are stored in 'matrix/', and can be
+customized.
+
+
+===Acknowledgements===
+
+This code was initially based off of Tony Capra's work 2007-2011,
+available at http://compbio.cs.princeton.edu/conservation/
+
+The data this code is intended to be run on (in particular,
+experiment.py) can also be found at the above link.
+
+The paper behind the code and data described above support the following
+paper:
 Capra JA and Singh M. Predicting functionally important residues from
 sequence conservation. Bioinformatics. 23(15):1875-82, 2007.  
 
-If you use it, please cite the paper.
-
-It is released under the GNU General Public License. Please see
-COPYING for more details. It requires python and, if you wish to use
-the von Neumann entropy method, numarray.  The other scoring methods
-will work without numarray.  See the comments at the top of
-score_conservation.py for more details.
-
-Dependencies:
-numarray (for vn_entropy only) -
-http://sourceforge.net/project/showfiles.php?group_id=1369&release_id=223264
-
-The program accepts alignments in the CLUSTAL and FASTA formats.  The
-simplest usage is:
-
-python score_conservation.py alignment.clustal
-
-This will compute conservation scores for the alignment using the
-Jensen-Shannon divergence with default settings and print out the
-scores.
-
-All methods described in the paper are implemented in
-score_conservation.py. The relevant parameters can be specified with
-command line options. For example, if you wanted to score an alignment
-named alignment.clustal using Jensen-Shannon divergence, a window of
-size 3 (on either side of the residue), and the swissprot background
-distribution, and then save it in a file called alignment.scores, you
-would type:
-
-python score_conservation.py -s js_divergence -w 3 -d
-      swissprot.distribution -o alignment.scores alignment.clustal
-
-To get ouput in reference to a particular sequence in the alignment,
-use the (-a) option.
-
-Type: 
-
-python score_conservation.py -h
-
-for usage, the full list of options, and defaults. 
-
-See the paper for a description of the methods. 
-
-The .distribution files provide amino acid distributions. Feel free to
-create your own. The matrix directory contains several BLOSUM matrices
-and target frequencies. Again, any matrix file that follows the format
-can be used.
-
+The substitution matrices included in this package use data the paper
+above, as well as from the following papers:
+Kosiol C and Goldman N. Different Versions of the Dayhoff Rate Matrix.
+Molecular Biology and Evolution. 22(2):193-199, 2005.
+Le S.Q., Gascuel O. LG: An Improved, General Amino-Acid Replacement
+Matrix. Molecular Biology and Evolution. 25(7):1307-20, 2008.

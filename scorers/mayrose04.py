@@ -84,7 +84,7 @@ class Mayrose04(Scorer):
             likelihood = self._compute_subtree_likelihood(root, rate, col, names_map, P_cached)
             # likelihood None only if column is all gaps
             assert likelihood is not None
-            joint = likelihood * prior
+            joint = float(likelihood) * prior
             top += joint * rate
             bot += joint
         expectation = top / bot

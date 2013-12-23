@@ -47,15 +47,17 @@ def imap_unordered(f, args, nprocs=None, timeout=None):
         p.daemon = True
         p.start()
 
+    tot = 0
     for i,arg in enumerate(args):
         q_in.put((i,arg))
+        tot += 1
     for _ in xrange(nprocs):
         q_in.put((None,None))
     q_in.close()
 
-    for _ in xrange(len(args)):
-        i, result = q_out.get()
-        yield (args[i], result)
+    for _ in xrange(tot):
+        j, result = q_out.get()
+        yield (args[j], result)
 
     # Just to make sure all child processes terminated?
     for p in procs:
