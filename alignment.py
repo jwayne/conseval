@@ -1,19 +1,32 @@
 import random
 import os
+
+from params import Params, ParamDef
 from phylotree import get_phylotree, read_phylotree
 from seqweights import get_seq_weights
-from utils.bio import iupac_alphabet
+from utils.bio import iupac_alphabet, get_column
 
 
 class Alignment(object):
 
+    PARAMS = Params(
+        ParamDef("test_file", None,
+            help="path to test file of scores to use for this alignment"),
+        ParamDef("parse_testset_fn", None,
+            help="function to parse testset fields"),
+        ParamDef("tree_file", None,
+            help="path to custom phylogenetic tree to use for this alignment"),
+    )
+
     MAX_SEQUENCES = 50
 
-    def __init__(self, align_file, **extra_inputs):
+    def __init__(self, align_file, **params):
         """
         Loads/calculates input data for `align_file`.  Sets:
         - self.msa: List of equal-length lists of nucleotides/AAs
         """
+        self.PARAMS.set_params(self, params)
+
         # Ingest alignment
         try:
             names, msa = read_clustal_alignment(align_file)
@@ -23,8 +36,10 @@ class Alignment(object):
             raise IOError("%s. Could not find %s. Exiting..." % (e, align_file))
 
         # Sanity check
-        if len(msa) != len(names) or msa == []:
-            raise ValueError("Unable to parse alignment.")
+        if not msa:
+            raise ValueError("No alignment read.")
+        if len(msa) != len(names):
+            raise ValueError("Unequal numbers of names and sequences in alignment.")
         seq_len = len(msa[0])
         for i, seq in enumerate(msa):
             if len(seq) != seq_len:
@@ -35,38 +50,41 @@ class Alignment(object):
 
         # Filter alignment if too many sequences.  This is only so that tree
         # computation doesn't take too long.
-        if len(msa) > self.MAX_SEQUENCES:
+        self.filtered = False
+        self.orig_num_sequences = len(names)
+        if self.orig_num_sequences > self.MAX_SEQUENCES:
             self.filtered = True
             random.seed(1000)
             inds = random.sample(range(1,len(msa)), self.MAX_SEQUENCES-1)
             names = [names[0]] + [names[ind] for ind in inds]
             msa = [msa[0]] + [msa[ind] for ind in inds]
 
-        self.align_file = align_file
+        self.align_file = os.path.abspath(align_file)
         self.names = names
         self.msa = msa
+        self.testset = None
         self._phylotree = None
         self._seq_weights = None
 
-        if 'tree_file' in extra_inputs:
-            self.tree_file = extra_inputs['tree_file']
-        else:
-            self.tree_file = None
+        if self.test_file:
+            self.testset = parse_testset(self.test_file, self.parse_testset_fn, self)
+
+        if self.tree_file:
+            # self._phylotree must match msa
+            tree = read_phylotree(self.tree_file)
+            tree_terminals = tree.get_terminals()
+            if len(tree_terminals) != len(self.names) or \
+                    set(clade.name for clade in tree_terminals) != set(self.names):
+                raise ValueError("Input tree does not match sequences in alignment")
+            self._phylotree = tree
 
     def get_phylotree(self, n_bootstrap=0, overwrite=False):
         """
         Cached phylogenetic tree.
         """
         if not self._phylotree:
-            if self.tree_file:
-                tree = read_phylotree(self.tree_file)
-                tree_names = set(clade.name for clade in tree.get_terminals())
-                msa_names = set(self.names)
-                if tree_names != msa_names:
-                    raise ValueError("Input tree does not match sequences in alignment")
-            else:
-                tree = get_phylotree(self, n_bootstrap, overwrite)
-            self._phylotree = tree
+            # self._phylotree must match msa
+            self._phylotree = get_phylotree(self, n_bootstrap, overwrite)
         return self._phylotree
 
     def get_seq_weights(self):
@@ -142,3 +160,33 @@ def read_clustal_alignment(filename):
                 else:
                     msa[names.index(t[0])] += t[1].upper().replace('B', 'D').replace('Z', 'Q').replace('X','-').replace('\r', '')
     return names, msa
+
+
+def parse_testset(test_file, parse_fields_fn, alignment):
+    actual = []
+    start_pos = None
+
+    with open(test_file, 'r') as f:
+        for line in f:
+            if line.startswith('#'):
+                continue
+            fields = line.split()
+            ind, result = parse_fields_fn(fields)
+            if start_pos is None:
+                start_pos = ind
+            pos = ind - start_pos
+
+            if len(actual) > pos:
+                # if indices skip down, then re-adjust so it's normal
+                start_pos -= len(actual) - pos
+            elif pos > len(actual):
+                for i in xrange(len(actual), pos):
+                    if get_column(i, alignment.msa) == 'X':
+                        # if shitty, fill it in
+                        actual.append(None)
+                        sys.stderr.write("%d: %s\n" % (ind, test_file))
+                    else:
+                        # otherwise, re-adjust
+                        start_pos += 1
+            actual.append(result)
+    return actual

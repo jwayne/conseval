@@ -19,9 +19,9 @@ def get_phylotree(alignment, n_bootstrap=0, overwrite=False):
     if not overwrite and os.path.exists(fname_tree) and os.path.getsize(fname_tree):
         tree = read_phylotree(fname_tree)
         # Check that the cached tree matches the alignment. If not, re-compute.
-        tree_names = set(clade.name for clade in tree.get_terminals())
-        msa_names = set(alignment.names)
-        if tree_names != msa_names:
+        tree_terminals = tree.get_terminals()
+        if len(tree_terminals) != len(alignment.names) or \
+                set(clade.name for clade in tree_terminals) != set(alignment.names):
             tree = None
     if not tree:
         tree = _compute_phylotree(alignment, fname_phy, fname_tree, n_bootstrap)

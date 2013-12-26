@@ -1,12 +1,32 @@
 
+################################################################################
+# Cmd line helpers
+################################################################################
+
+def parse_params(params):
+    res = {}
+    for val in params:
+        if val.count("=") != 1:
+            raise ValueError("Bad format for params argument '%s'" % val)
+        k,v = val.split("=")
+        if k in res:
+            raise ValueError("Params argument '%s' specified multiple times" % k)
+        res[k] = v
+    return res
+
+
+################################################################################
+# Class definitions
+################################################################################
+
 class ParamDef(object):
 
-    def __init__(self, name, default, parse_fxn=None, check_fxn=None, help=None):
+    def __init__(self, name, default, parse_fxn=None, check_fxn=None, help=""):
         self.name = name
         self.parse_fxn = parse_fxn
         self.check_fxn = check_fxn
         self.default = self.parse(default)
-        self.help = help
+        self.help = help.capitalize()
 
     def with_default(self, default):
         return type(self)(self.name, default, self.parse_fxn, self.check_fxn, self.help)
@@ -21,6 +41,13 @@ class ParamDef(object):
                         % (args[0], self.name))
             return val
         return self.default
+
+    def __str__(self):
+        return "%s: %s (default %r)" % (self.name, self.help, self.default)
+
+    def __repr__(self):
+        return "%s(%r, %r, %r, %r, %r)" % (type(self).__name__, self.name, self.default,
+            self.parse_fxn, self.check_fxn, self.help)
 
 
 class Params(object):
@@ -38,7 +65,6 @@ class Params(object):
             if param_def.name in seen:
                 raise AttributeError("Inputs to Params have same name: %s" % param_def.name)
             seen.add(param_def.name)
-
         self.param_defs = param_defs
 
 
@@ -97,18 +123,22 @@ class Params(object):
                 setattr(owner, k, param_def.parse(override[k]))
             else:
                 setattr(owner, k, param_def.parse())
+        #TODO: make these params immutable
 
     def get_params(self, owner):
         params = {}
         for param_def in self.param_defs:
             k = param_def.name
             if not hasattr(owner, k):
-                raise AttributError("Param owner does not have attribute '%s' set" % k)
+                raise AttributeError("Param owner does not have attribute '%s' set" % k)
             params[k] = getattr(owner, k)
         return params
 
     def __str__(self):
-        return str(self.param_defs)
+        return "Params [%s]" % "; ".join(map(str,self.param_defs))
 
     def __repr__(self):
-        return "Params(%s)" % self
+        return "%s(%r)" % (type(self).__name__, self.param_defs)
+
+    def __interactive_display__(self):
+        return "Params [\n\t%s\n]" % "\n\t".join(map(str,self.param_defs))

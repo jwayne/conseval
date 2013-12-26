@@ -50,6 +50,7 @@ def imap_unordered(f, args, nprocs=None, timeout=None):
     tot = 0
     for i,arg in enumerate(args):
         q_in.put((i,arg))
+        #TODO: put only as many in as there are free workers
         tot += 1
     for _ in xrange(nprocs):
         q_in.put((None,None))

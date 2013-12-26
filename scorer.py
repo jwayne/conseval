@@ -13,6 +13,10 @@ from substitution import SubstitutionModel, read_sim_matrix, read_bg_distributio
 # Get a Scorer by name
 ################################################################################
 
+def get_all_scorer_names():
+    return [os.path.split(name)[-1][:-3] for name in os.listdir('scorers')
+            if name.endswith('.py') and name != '__init__.py']
+
 def get_scorer(name, **params):
     try:
         scorer_cls = get_scorer_cls(name)
@@ -46,27 +50,22 @@ class Scorer(object):
     # along with these defaults.  Defaults can be overridden and parameters
     # can be extended, see scorers/mayrose04.py for an example.
     PARAMS = Params(
-        #dat matrix file of rate matrix AND bg distribution
-        ParamDef('sub_model_file', 'matrix/jtt-dcmut.dat.txt',
-            lambda x: os.path.abspath(x)),
-        #similarity matrix file, *.bla or *.qij
-        ParamDef('sim_matrix_file', 'matrix/blosum62.bla',
-            lambda x: os.path.abspath(x)),
-        #background distribution file, e.g., swissprot.distribution
-        ParamDef('bg_distribution_file', 'matrix/blosum62.distribution',
-            lambda x: os.path.abspath(x)),
-        #Number of residues on either side included in the window
-        ParamDef('window_size', 3, int, lambda x: x>=0),
-        #lambda for window heuristic linear combination
-        ParamDef('window_lambda', .5, float, lambda x: 0<=x<=1),
-        #Do not score columns that contain more than gap cutoff fraction gaps
-        ParamDef('gap_cutoff', .3, float, lambda x: 0<=x<=1),
-        #Print the z-score (over the alignment) of each column raw score
-        #penalize gaps by this amount
-        ParamDef('normalize_scores', False, bool),
-        #penalize gaps by this amount. The gap penalty used is
-        #the score times the fraction of non-gap positions in the column.
-        ParamDef('gap_penalty', 1, float),
+        ParamDef('sub_model_file', 'matrix/lg_LG.PAML.txt', os.path.abspath,
+            help=".dat matrix file of rate matrix AND bg distribution"),
+        ParamDef('sim_matrix_file', 'matrix/blosum62.bla', os.path.abspath,
+            help="similarity matrix file, *.bla or *.qij"),
+        ParamDef('bg_distribution_file', 'matrix/blosum62.distribution', os.path.abspath,
+            help="background distribution file, e.g., swissprot.distribution"),
+        ParamDef('window_size', 3, int, lambda x: x>=0,
+            help="Number of residues on either side included in the window"),
+        ParamDef('window_lambda', .5, float, lambda x: 0<=x<=1,
+            help="lambda for window heuristic linear combination"),
+        ParamDef('gap_cutoff', .3, float, lambda x: 0<=x<=1,
+            help="maximum allowed fraction of gaps per column; columns > this won't be scored"),
+        ParamDef('normalize_scores', False, bool,
+            help="return z-scores (over the alignment) of each column, instead of original scores"),
+        ParamDef('gap_penalty', 1, float,
+            help="penalize gaps by this amount. The gap penalty used is the score times the fraction of non-gap positions in the column."),
     )
 
     # If there are errors.
@@ -78,10 +77,10 @@ class Scorer(object):
 
 
     def __init__(self, **params):
+        self.PARAMS.set_params(self, params)
+
         s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', type(self).__name__)
         self.name = re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
-
-        self.PARAMS.set_params(self, params)
 
         if self.USE_DAT_MATRIX_AND_DISTRIBUTION and \
                 (self.USE_SIM_MATRIX or self.USE_BG_DISTRIBUTION):
