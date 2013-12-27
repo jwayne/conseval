@@ -40,9 +40,9 @@ def run_experiments(scorer_config, dataset_name, out_dirname, limit=0):
     """
     # Handle dataset_name, limit
     dataset_config = DATASET_CONFIGS[dataset_name]
-    filenames = dataset_config.get_filenames(limit)
-    sys.stderr.write("Scoring %d alignments\n" % len(filenames))
-    if not filenames:
+    align_files = dataset_config.get_align_files(limit)
+    sys.stderr.write("Scoring %d alignments\n" % len(align_files))
+    if not align_files:
         return
 
     # Handle scorer_config
@@ -67,29 +67,28 @@ def run_experiments(scorer_config, dataset_name, out_dirname, limit=0):
     run_experiment = run_experiment_helper(scorers, dataset_config, out_dirname)
 
     # Shortcut if no parallelization
-    if len(filenames) == 1:
-        yield filenames[0], run_experiment(filenames[0])
+    if len(align_files) == 1:
+        yield align_files[0], run_experiment(align_files[0])
         return
 
-    it = parallelize.imap_unordered(run_experiment, filenames)
+    it = parallelize.imap_unordered(run_experiment, align_files)
     for align_file, score_tups in it:
         yield align_file, score_tups
 
 
 def run_experiment_helper(scorers, dataset_config, out_dir):
     scorer_names = [scorer.name for scorer in scorers]
-    def run_experiment(align_tail):
+    def run_experiment(align_file):
         """
         Run scorers on one aln file.  This is a helper for multithreading the
         scoring of each aln file.
         """
-        align_file = os.path.join(dataset_config.aln_dir, align_tail)
-        test_file = os.path.join(dataset_config.test_dir, dataset_config.align_to_test(align_tail))
+        test_file = dataset_config.get_test_file(align_fie)
         alignment = Alignment(align_file, test_file=test_file,
-                parse_testset_fn=dataset_config.parse_testset_fn)
+                parse_testset_line=dataset_config.parse_testset_line)
 #TODO: build ppc (probably just drawing distribution of rates for conserved/unconserved) for mayrose04
         score_tups = compute_scores(alignment, scorers)
-        out_file = ".".join(align_tail.replace('/', '___').split('.')[:-1]) + ".res"
+        out_file = ".".join(align_file[len(dataset_config.aln_dir+1):].replace('/', '___').split('.')[:-1]) + ".res"
         with open(os.path.join(out_dir, out_file), 'w') as f:
             write_scores(alignment, score_tups, scorer_names, f)
         return score_tups
