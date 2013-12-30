@@ -12,7 +12,7 @@ class Alignment(object):
     PARAMS = Params(
         ParamDef("test_file", None,
             help="path to test file of scores to use for this alignment"),
-        ParamDef("parse_testset_line", None,
+        ParamDef("parse_testset_fn", None,
             help="function to parse testset fields"),
         ParamDef("tree_file", None,
             help="path to custom phylogenetic tree to use for this alignment"),
@@ -67,7 +67,7 @@ class Alignment(object):
         self._seq_weights = None
 
         if self.test_file:
-            self.testset = parse_testset(self.test_file, self.parse_testset_line, self)
+            self.testset = self.parse_testset_fn(self.test_file, self.msa[0])
 
         if self.tree_file:
             # self._phylotree must match msa
@@ -160,47 +160,3 @@ def read_clustal_alignment(filename):
                 else:
                     msa[names.index(t[0])] += t[1].upper().replace('B', 'D').replace('Z', 'Q').replace('X','-').replace('\r', '')
     return names, msa
-
-
-def parse_testset(test_file, parse_testset_line, alignment):
-    vals = []
-    start_pos = None
-    aa = None
-
-    with open(test_file, 'r') as f:
-        for line in f:
-            if line.startswith('#'):
-                continue
-            fields = parse_testset_line(line)
-            if len(fields) == 3:
-                pos, val, aa = fields
-            elif len(fields) == 2:
-                pos, val = fields
-            else:
-                raise ValueError("Bad result from parse_testset_line for '%s'" % test_file)
-
-            if start_pos is None:
-                start_pos = pos
-            curr_pos = pos - start_pos
-
-            if len(vals) > curr_pos:
-                # if pos skips down, then re-adjust start_pos so pos doesn't skip
-                start_pos -= len(vals) - curr_pos
-            elif curr_pos > len(vals):
-                # if pos skips up, then re-adjust start_pos or fill in missing sites
-                # with None 
-                for i in xrange(len(vals), curr_pos):
-                    if get_column(i, alignment.msa)[0] == 'X':
-                        # if shitty, fill it in
-                        vals.append(None)
-                        sys.stderr.write("%d: %s\n" % (pos, test_file))
-                    else:
-                        # otherwise, re-adjust
-                        start_pos += 1
-            if aa:
-                tmp = get_column(curr_pos, alignment.msa)[0]
-                if tmp != aa:
-                    import ipdb
-                    ipdb.set_trace()
-            vals.append(val)
-    return vals

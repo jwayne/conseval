@@ -85,7 +85,7 @@ def run_experiment_helper(scorers, dataset_config, out_dir):
         """
         test_file = dataset_config.get_test_file(align_fie)
         alignment = Alignment(align_file, test_file=test_file,
-                parse_testset_line=dataset_config.parse_testset_line)
+                parse_testset_fn=dataset_config.parse_testset_fn)
 #TODO: build ppc (probably just drawing distribution of rates for conserved/unconserved) for mayrose04
         score_tups = compute_scores(alignment, scorers)
         out_file = ".".join(align_file[len(dataset_config.aln_dir+1):].replace('/', '___').split('.')[:-1]) + ".res"
