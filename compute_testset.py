@@ -1,8 +1,8 @@
+#!/usr/bin/python
 """
 Create an Alignment object for each alignment file in a dataset.
 This can be used to easily test parsing of a test set.
 """
-#!/usr/bin/python
 from alignment import Alignment
 from dataset_config import DATASET_CONFIGS as DC
 import sys

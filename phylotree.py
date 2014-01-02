@@ -19,9 +19,7 @@ def get_phylotree(alignment, n_bootstrap=0, overwrite=False):
     if not overwrite and os.path.exists(fname_tree) and os.path.getsize(fname_tree):
         tree = read_phylotree(fname_tree)
         # Check that the cached tree matches the alignment. If not, re-compute.
-        tree_terminals = tree.get_terminals()
-        if len(tree_terminals) != len(alignment.names) or \
-                set(clade.name for clade in tree_terminals) != set(alignment.names):
+        if not check_phylotree(alignment, tree):
             tree = None
     if not tree:
         tree = _compute_phylotree(alignment, fname_phy, fname_tree, n_bootstrap)
@@ -32,6 +30,15 @@ def read_phylotree(fname_tree):
     return Phylo.read(fname_tree, "newick")
 
 
+def check_phylotree(alignment, tree):
+    """
+    Check that `tree` matches `alignment`.
+    """
+    tree_terminals = tree.get_terminals()
+    return len(tree_terminals) == len(alignment.names) and \
+            set(clade.name for clade in tree_terminals) == set(alignment.names)
+
+
 def _compute_phylotree(alignment, fname_phy, fname_tree, n_bootstrap):
     """
     Use PhyML to compute the tree for fname_aln.
@@ -40,7 +47,7 @@ def _compute_phylotree(alignment, fname_phy, fname_tree, n_bootstrap):
     """
     records = []
     for row,name in zip(alignment.msa, alignment.names):
-        records.append(SeqRecord(Seq(row), id=name, description=name))
+        records.append(SeqRecord(Seq(''.join(row)), id=name, description=name))
     with open(fname_phy, "w") as f_out:
         SeqIO.write(records, f_out, "phylip-relaxed")
     os.system("phyml -i %s -d aa -b %d --quiet --no_memory_check" % (fname_phy, n_bootstrap))

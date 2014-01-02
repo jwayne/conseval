@@ -7,36 +7,37 @@ from __future__ import division
 from collections import defaultdict
 import numpy as np
 
-from scorer import Scorer, ParamDef
-from utils.bio import aa_to_index
+from params import ParamDef
+from scorers.base import Scorer
+from substitution import paramdef_sub_model
+from utils.bio import aa_to_index, get_column
 from utils.gamma import DiscreteGammaDistribution
 
 
 class Mayrose04(Scorer):
 
-    PARAMS = Scorer.PARAMS.override({
+    params = Scorer.params.with_defaults({
         'window_size': 0,
-        'gap_cutoff': 1,
     }).extend(
         ParamDef('alpha', 1, float, lambda x: x>0,
-            help="alpha parameters into the gamma prior"),
+            help="alpha parameter into the gamma prior for rate r. Var(r) = 1/alpha"),
         ParamDef('n_gamma_bins', 16, int, lambda x: x>0,
             help="number of bins to use for the discrete approximation to the gamma distribution"),
+        paramdef_sub_model,
     )
-
-    USE_DAT_MATRIX_AND_DISTRIBUTION = True
 
     def __init__(self, **params):
         super(Mayrose04, self).__init__(**params)
+
         self.beta = self.alpha
         self.dgd = DiscreteGammaDistribution(
                 self.alpha, self.beta, self.n_gamma_bins)
-        self.DEFAULT_SCORE = self.alpha / self.beta
 
 
-    def _precache(self, alignment, precache):
+    def _score(self, alignment):
         P_cached = defaultdict(dict)
         tree = alignment.get_phylotree()
+        names_map = dict((name, i) for i, name in enumerate(alignment.names))
 
         terminals = set()
         root = tree.clade
@@ -59,12 +60,21 @@ class Mayrose04(Scorer):
                     raise Exception("Duplicate node name: %s" % node.name)
                 terminals.add(node.name)
 
-        precache.names_map = dict((name, i) for i, name in enumerate(alignment.names))
-        precache.P_cached = P_cached
-        precache.tree = tree
+        scores = []
+        for i in xrange(len(alignment.msa[0])):
+            col = get_column(i, alignment.msa)
+            n_gaps = col.count('-')
+            assert n_gaps < len(col)
+            if n_gaps == len(col) - 1:
+                # Return mean score.
+                score = self.alpha / self.beta
+            else:
+                score = self._score_col(col, names_map, P_cached, tree)
+            scores.append(score)
+        return scores
 
 
-    def score_col(self, col, precache):
+    def _score_col(self, col, names_map, P_cached, tree):
         """
         Compute this site's rate of evolution r as the expectation of the
         posterior: E[r|X] = \sum_r( P[X|r] P[r] r ) / \sum_r( P[X|r] P[r] ).
@@ -72,15 +82,13 @@ class Mayrose04(Scorer):
         Assume a fixed alpha until I get it working (leave the inference of the
         hyperparameter until later).
         """
-        names_map = precache.names_map
-        P_cached = precache.P_cached
-        tree = precache.tree
         root = tree.clade
 
         # Compute numerator and denominator separately
         top = 0
         bot = 0
         for rate, prior in self.dgd.get_categories():
+            # P(X|r)
             likelihood = self._compute_subtree_likelihood(root, rate, col, names_map, P_cached)
             # likelihood None only if column is all gaps
             assert likelihood is not None

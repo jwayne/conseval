@@ -3,25 +3,21 @@ Property Entropy (Mirny and Shakhnovich 95, Valdar and Thornton 01)
 Code copyright Tony Capra 2007.
 """
 import math
-from scorer import Scorer
-from utils.bio import (aa_to_index,
-                   weighted_freq_count_pseudocount, weighted_gap_penalty, PSEUDOCOUNT)
+from scorers.cs07.base import Cs07Scorer
+from utils.bio import aa_to_index, weighted_freq_count_pseudocount, PSEUDOCOUNT
 
 
-class PropertyEntropy(Scorer):
+class PropertyShannonEntropy(Cs07Scorer):
 
     # Mirny and Shakn. '99
     property_partition = [['A','V','L','I','M','C'], ['F','W','Y','H'], ['S','T','N','Q'], ['K','R'], ['D', 'E'], ['G', 'P'], ['-']]
 
-    def _precache(self, alignment, precache):
-        precache.seq_weights = alignment.get_seq_weights()
-
-    def score_col(self, col, precache):
+    def _score_col(self, col, seq_weights):
         """
         Calculate the entropy of a column col relative to a partition of the
         amino acids. Similar to Mirny '99.
         """
-        fc = weighted_freq_count_pseudocount(col, precache.seq_weights, PSEUDOCOUNT)
+        fc = weighted_freq_count_pseudocount(col, seq_weights, PSEUDOCOUNT)
 
         # sum the aa frequencies to get the property frequencies
         prop_fc = [0.] * len(self.property_partition)
@@ -38,7 +34,4 @@ class PropertyEntropy(Scorer):
 
         inf_score = 1 - (-1 * h)
 
-        if self.gap_penalty == 1:
-            return inf_score * weighted_gap_penalty(col, precache.seq_weights)
-        else:
-            return inf_score
+        return inf_score

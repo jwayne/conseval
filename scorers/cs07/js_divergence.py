@@ -3,25 +3,23 @@ Jensen-Shannon Divergence (Capra and Singh 07)
 Code copyright Tony Capra 2007.
 """
 import math
-from scorer import Scorer
-from utils.bio import weighted_freq_count_pseudocount, weighted_gap_penalty, PSEUDOCOUNT
+from scorers.cs07.base import Cs07Scorer
+from substitution import paramdef_bg_distribution
+from utils.bio import weighted_freq_count_pseudocount, PSEUDOCOUNT
 
 
-class JsDivergence(Scorer):
+class JsDivergence(Cs07Scorer):
 
-    USE_BG_DISTRIBUTION = True
+    params = Cs07Scorer.params.extend(paramdef_bg_distribution)
 
-    def _precache(self, alignment, precache):
-        precache.seq_weights = alignment.get_seq_weights()
-
-    def score_col(self, col, precache):
+    def _score_col(self, col, seq_weights):
         """
         Return the Jensen-Shannon Divergence for the column with the background
         distribution bg_distr.
         """
-        distr = self.bg_distribution[:]
+        distr = self.bg_distribution
 
-        fc = weighted_freq_count_pseudocount(col, precache.seq_weights, PSEUDOCOUNT)
+        fc = weighted_freq_count_pseudocount(col, seq_weights, PSEUDOCOUNT)
 
         # if background distrubtion lacks a gap count, remove fc gap count
         if len(distr) == 20:
@@ -31,7 +29,7 @@ class JsDivergence(Scorer):
                 new_fc[i] = new_fc[i] / s
             fc = new_fc
 
-        if len(fc) != len(distr): return -1
+        assert len(fc) == len(distr)
 
         # make r distriubtion
         r = []
@@ -51,7 +49,4 @@ class JsDivergence(Scorer):
         # d /= 2 * math.log(len(fc))
         d /= 2
 
-        if self.gap_penalty == 1:
-            return d * weighted_gap_penalty(col, precache.seq_weights)
-        else:
-            return d
+        return d

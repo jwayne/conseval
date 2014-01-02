@@ -1,9 +1,13 @@
 from __future__ import division
 import numpy as np
+import os
+
+from params import ParamDef
+from utils.bio import amino_acids
+
 
 N_STATES = 20
-PRECISION_NDIGITS = 5
-PRECISION = .1**PRECISION_NDIGITS
+PRECISION = .1**5
 
 
 class SubstitutionModel(object):
@@ -11,6 +15,8 @@ class SubstitutionModel(object):
     Class to store an amino acid substitution model of an instantaneous
     rate matrix Q and stationary distribution PI, and to calculate the
     probability matrix P(t) = e^(Qt) for any time t>0.
+
+    Code by Josh Chen 2013.
     """
 
     def __init__(self, dat_file):
@@ -53,36 +59,48 @@ class SubstitutionModel(object):
         # according to KosiolGoldman2005 pg 1 + the same comment above
         Q_rowsums = np.asarray(np.sum(self.Q,1)).reshape(-1) - np.diag(self.Q)
         Q_rowprod = np.dot(self.freqs, Q_rowsums)
-        if abs(Q_rowprod - 1) > PRECISION:
+        if np.abs(Q_rowprod - 1) > PRECISION:
             raise ValueError("sum_i sum_(j!=i) q_ij * freqs_i = %f != 1" % Q_rowprod)
 
         # Calculate A = PI^(-1/2) * S * PI^(1/2) according to SchabauerEtAl2012 pg 4
-        self.PI_pow_poshalf = np.diag(np.diag(self.PI)**.5)
-        self.PI_pow_neghalf = np.diag(np.diag(self.PI_pow_poshalf)**(-1))
-        self.A = self.PI_pow_poshalf * self.S * self.PI_pow_poshalf
-        # Calculate Eigvecs * Eigvals * Eigvecs^-1 = A according to
+        PI_pow_poshalf = np.diag(np.diag(self.PI)**.5)
+        PI_pow_neghalf = np.diag(np.diag(PI_pow_poshalf)**(-1))
+        self.A = PI_pow_poshalf * self.S * PI_pow_poshalf
+        # Calculate Eigvecs * diag(Eigvals) * Eigvecs^-1 = A according to
         # MolerVan_Loan2003 pg 20.  SchabauerEtAl2012 pg 4 is oddly wrong.
-        self.A_eigvals, self.A_eigvecs = np.linalg.eig(self.A)
-        self.A_eigvecsInv = np.linalg.inv(self.A_eigvecs)
+        self.A_eigvals, A_eigvecs = np.linalg.eig(self.A)
+        A_eigvecsInv = np.linalg.inv(A_eigvecs)
+        # Prepare multipliers for calc_P.  See calc_P docs for details.
+        self.calc_P_left = PI_pow_neghalf * A_eigvecs
+        self.calc_P_right = A_eigvecsInv * PI_pow_poshalf
         # Verify that probability calculation is OK.
         P = self.calc_P()
-        if np.any(abs(self.freqs*P - self.freqs) > PRECISION):
+        if np.any(np.abs(self.freqs*P - self.freqs) > PRECISION):
             raise ValueError("pi * P != pi")
 
-
     def calc_P(self, t=1):
-        # Calculate e^(At) = Eigvecs * e^(Eigvals*t) * Eigvecs^-1 = A according to
-        # MolerVan_Loan2003 pg 20.  SchabauerEtAl2012 pg 4 is oddly wrong.
-        A_exp = self.A_eigvecs * np.diag(np.exp(self.A_eigvals*t)) * self.A_eigvecsInv
-        # Compute P from e^(At) according to SchabauerEtAl2012 pg 4
-        P = self.PI_pow_neghalf * A_exp * self.PI_pow_poshalf
-        return P
+        """
+        Compute the probability matrix P
+            P = PI^(-1/2) * e^(At) * PI^(1/2)
+            [src: MolerVan_Loan2003 pg 20. SchabauerEtAl2012 pg 4 is oddly wrong]
+        where
+            e^(At) = Eigvecs * e^(Eigvals*t) * Eigvecs^-1
+            [src: SchabauerEtAl2012 pg 4]
+        for Eigvecs, Eigvals of A.
+        Note that to speed computation, we pre-compute
+            self.calc_P_left = PI^(-1/2) * Eigvecs
+            self.calc_P_right = Eigvecs^-1 * PI^(1/2)
+        """
+        A_eigvals_exp = np.diag(np.exp(self.A_eigvals*t))
+        return self.calc_P_left * A_eigvals_exp * self.calc_P_right
 
 
 def read_sim_matrix(sm_file):
     """
     Read in a scoring matrix from a file, e.g., blosum80.bla, and return it
     as an array.
+    
+    Code by Tony Capra 2007.
     """
     aa_index = 0
     first_line = 1
@@ -114,6 +132,8 @@ def read_bg_distribution(fname):
     Read an amino acid distribution from a file. The probabilities should
     be on a single line separated by whitespace in alphabetical order as in
     amino_acids above. # is the comment character.
+
+    Code by Tony Capra 2007.
     """
     distribution = []
     with open(fname) as f:
@@ -126,3 +146,17 @@ def read_bg_distribution(fname):
     if .997 > sum(distribution) or sum(distribution) > 1.003:
         raise ValueError("Distribution sums to %f != 1." % sum(distribution))
     return distribution
+
+
+paramdef_sub_model = ParamDef(
+        'sub_model', 'matrix/lg_LG.PAML.txt', os.path.abspath,
+        load_fxn=SubstitutionModel,
+        help=".dat matrix file of rate matrix and bg distribution")
+paramdef_sim_matrix = ParamDef(
+        'sim_matrix', 'matrix/blosum62.bla', os.path.abspath,
+        load_fxn=read_sim_matrix,
+        help="similarity matrix file, *.bla or *.qij")
+paramdef_bg_distribution = ParamDef(
+        'bg_distribution', 'matrix/blosum62.distribution', os.path.abspath,
+        load_fxn=read_bg_distribution,
+        help="background distribution file, e.g., swissprot.distribution")

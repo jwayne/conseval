@@ -2,7 +2,7 @@ import os
 import random
 
 
-_DATA_HOME_DIR = os.path.abspath("../../data/cs08/")
+_DATA_HOME_DIR = os.path.abspath("../../data/cs07/")
 
 class DatasetConfig(object):
 
@@ -96,7 +96,7 @@ def _parse_testset_ec(test_file, seq):
             fields = line.split()
             pos, aa, val = int(fields[0]), fields[1], float(fields[2])
             lines.append((pos, aa, val))
-    seq_nogaps = ''.join([aa for aa in seq if aa != 'X' and aa != '-'])
+    seq_nogaps = ''.join([aa for aa in seq if aa != '-'])
 
     n_sites = len(seq)
     vals = []
@@ -108,7 +108,7 @@ def _parse_testset_ec(test_file, seq):
 
         # Gaps in sequence should be matched with None's in the testset.
         seq_aa = seq[len(vals)]
-        while seq_aa == 'X' or seq_aa == '-':
+        while seq_aa == '-':
             vals.append(None)
             if len(vals) >= n_sites:
                 return vals
@@ -144,7 +144,7 @@ def _parse_testset_ec(test_file, seq):
                         break
                     _seq_aa = seq[_curr_pos+j]
                     _test_aa = lines[i+j][1]
-                    if _seq_aa == 'X' or _seq_aa == '-':
+                    if _seq_aa == '-':
                         break
                     if _seq_aa != _test_aa:
                         diff_match = -1

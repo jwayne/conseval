@@ -3,7 +3,7 @@
 import argparse, math, os, sys
 from alignment import Alignment
 from params import parse_params
-from scorer import get_scorer, get_all_scorer_names, get_scorer_cls
+from scorers.base import get_scorer, get_all_scorer_names, get_scorer_cls
 from utils.bio import get_column
 
 
@@ -42,8 +42,8 @@ def prepare_header(scorers):
     for scorer in scorers:
         header.append("# %s" % scorer.name)
         params = scorer.get_params()
-        for k in sorted(params.keys()):
-            header.append("# \t%s: %s" % (k, params[k]))
+        for k, v in params:
+            header.append("# \t%s: %s" % (k, v))
     return "\n".join(header) + "\n"
 
 
@@ -109,7 +109,7 @@ def parse_args():
     parser.add_argument('-a', dest='align_params', action='append', default=[],
         help="parameters associcated with align_file, can specify multiple. Specify as '-a inputName=inputValue', e.g. '-a tree_file=tree.txt'")
     parser.add_argument('-p', dest='scorer_params', action='append', default=[],
-        help="parameters to pass to the scorer, can specify multiple. Specify as '-p paramName=paramValue', e.g. '-p gap_penalty=1")
+        help="parameters to pass to the scorer, can specify multiple. Specify as '-p paramName=paramValue', e.g. '-p use_gap_penalty=1")
 
     parser.add_argument('-o', dest='out_fname', type=str, 
         help="name of output file. Default prints to screen")
@@ -121,17 +121,21 @@ def parse_args():
     args.scorer_params = parse_params(args.scorer_params)
 
     if args.list_params:
+        print "================"
         print "Alignment params:"
-        print "\n".join("\t%s" % pd for pd in Alignment.PARAMS.param_defs)
+        print "================"
+        print "\n".join("    %s" % pd for pd in Alignment.params.param_defs)
         print ""
         if args.scorer_name:
             scorer_names = [args.scorer_name]
         else:
             scorer_names = get_all_scorer_names()
         for scorer_name in scorer_names:
+            print "================"
             print "Scorer params for %s:" % scorer_name
+            print "================"
             scorer_cls = get_scorer_cls(scorer_name)
-            print "\n".join("\t%s" % pd for pd in scorer_cls.PARAMS.param_defs)
+            print "\n".join("    %s" % pd for pd in scorer_cls.params.param_defs)
             print ""
         sys.exit(0)
 
@@ -155,6 +159,7 @@ def main():
 
     header = prepare_header(scorers)
 
+    scorer_names = [args.scorer_name]
     if args.out_fname:
         with open(args.out_fname, 'w'):
             write_scores(alignment, score_tups, scorer_names, f,

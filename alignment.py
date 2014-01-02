@@ -1,19 +1,19 @@
 import random
 import os
 
-from params import Params, ParamDef
-from phylotree import get_phylotree, read_phylotree
+from params import Params, ParamDef, WithParams
+from phylotree import get_phylotree, read_phylotree, check_phylotree
 from seqweights import get_seq_weights
 from utils.bio import iupac_alphabet, get_column
 
 
-class Alignment(object):
+class Alignment(WithParams):
 
-    PARAMS = Params(
+    params = Params(
         ParamDef("test_file", None,
             help="path to test file of scores to use for this alignment"),
         ParamDef("parse_testset_fn", None,
-            help="function to parse testset fields"),
+            help="function to parse testset fields. Meaningful only if test_file set"),
         ParamDef("tree_file", None,
             help="path to custom phylogenetic tree to use for this alignment"),
     )
@@ -23,9 +23,18 @@ class Alignment(object):
     def __init__(self, align_file, **params):
         """
         Loads/calculates input data for `align_file`.  Sets:
+        - self.align_file: Filename this alignment was loaded from
+        - self.names: Names of sequences in self.msa
         - self.msa: List of equal-length lists of nucleotides/AAs
+        - self.testset: Test labels of each column, if available
+
+        self.msa is cleaned to have no more than self.MAX_SEQUENCES sequences. This
+        is so phylogenetic tree calculation does not take too long.
+
+        self.msa is cleaned so that the first sequence contains no gaps, and so that
+        no column contains all gaps.
         """
-        self.PARAMS.set_params(self, params)
+        super(Alignment, self).__init__(**params)
 
         # Ingest alignment
         try:
@@ -59,40 +68,59 @@ class Alignment(object):
             names = [names[0]] + [names[ind] for ind in inds]
             msa = [msa[0]] + [msa[ind] for ind in inds]
 
+        if self.test_file:
+            testset = self.parse_testset_fn(self.test_file, msa[0])
+        else:
+            testset = None
+
+        inds = []
+        for i in xrange(len(msa[0])):
+            if msa[0][i] == '-':
+                continue
+            col = get_column(i, msa)
+            if col.count('-') == len(col):
+                continue
+            inds.append(i)
+        msa = [[row[i] for i in inds] for row in msa]
+        if testset:
+            testset = [testset[i] for i in inds]
+
         self.align_file = os.path.abspath(align_file)
         self.names = names
         self.msa = msa
-        self.testset = None
+        self.testset = testset
         self._phylotree = None
         self._seq_weights = None
 
-        if self.test_file:
-            self.testset = self.parse_testset_fn(self.test_file, self.msa[0])
-
-        if self.tree_file:
-            # self._phylotree must match msa
-            tree = read_phylotree(self.tree_file)
-            tree_terminals = tree.get_terminals()
-            if len(tree_terminals) != len(self.names) or \
-                    set(clade.name for clade in tree_terminals) != set(self.names):
-                raise ValueError("Input tree does not match sequences in alignment")
-            self._phylotree = tree
 
     def get_phylotree(self, n_bootstrap=0, overwrite=False):
         """
-        Cached phylogenetic tree.
+        Phylogenetic tree computed on the alignment.
+
+        Caches the loaded/computed phylogenetic tree after the first call. Setting `overwrite`
+        ignores the cached value and re-computes the tree.
         """
-        if not self._phylotree:
-            # self._phylotree must match msa
-            self._phylotree = get_phylotree(self, n_bootstrap, overwrite)
+        if overwrite and self.tree_file:
+            raise ValueError("Cannot overwrite tree for alignment when given tree_file")
+        if not self._phylotree or overwrite:
+            if self.tree_file:
+                tree = read_phylotree(self.tree_file)
+                if not check_phylotree(self, tree):
+                    raise ValueError("Input tree does not match sequences in alignment")
+            else:
+                tree = get_phylotree(self, n_bootstrap, overwrite)
+            self._phylotree = tree
         return self._phylotree
 
     def get_seq_weights(self):
         """
-        Cached sequence weights for each column.
-        an array of floats that is used to weight the contribution of each
-        seqeuence. If the len(seq_weights) != len(col), then every sequence
-        gets a weight of one.
+        Array of floats that is used to weight the contribution of each
+        seqeuence, based on HenikoffHenikoff1994, to emphasize sequences
+        that are surprising.  This is only needed when a phylogenetic tree
+        is not used; it helps adjust for alignments in which sequences are
+        all very similar or very different.
+        
+        Caches the loaded/computed sequence weights after the first call.
         """
         if not self._seq_weights:
             self._seq_weights = get_seq_weights(self)

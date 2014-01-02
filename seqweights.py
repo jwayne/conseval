@@ -1,3 +1,10 @@
+"""
+Implementation of Henikoff and Henikoff 1994 method to weight sequences
+according to their similarity.
+
+Code by Tony Capra 2007.
+"""
+import os
 from utils.bio import amino_acids, aa_to_index
 
 #####
@@ -17,16 +24,14 @@ def read_seq_weights(fname):
     Read in a sequence weight file f and create sequence weight list.
     The weights are in the same order as the sequences each on a new line.
     """
+    if not os.path.exists(fname):
+        return None
     seq_weights = []
-    try:
-        f = open(fname)
+    with open(fname) as f:
         for line in f:
             l = line.split()
             if line[0] != '#' and len(l) == 2:
                 seq_weights.append(float(l[1]))
-        f.close()
-    except IOError, e:
-        pass
     return seq_weights
 
 
