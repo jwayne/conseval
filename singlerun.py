@@ -22,7 +22,7 @@ def compute_scores(alignment, scorers):
             sys.stderr.write("Error scoring %s via %s\n" %
                 (alignment.align_file, type(scorer).__name__))
             traceback.print_exc()
-            scores = [None] * len(alignment.msa)
+            scores = [None] * len(alignment.msa[0])
         all_scores.append(scores)
     # Rearrange to list of scores, grouped by site
     score_tups = zip(*all_scores)

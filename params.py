@@ -144,7 +144,8 @@ class ParamDef(object):
         """
         Return the same ParamDef, but with a different default.
         """
-        return type(self)(self.name, default, self.load_fxn, self.check_fxn, self.help)
+        return type(self)(self.name, default, self.clean_fxn, self.check_fxn,
+                self.load_fxn, self.help)
 
     def clean(self, *args):
         """
@@ -216,8 +217,8 @@ class Params(object):
         ks = set(pd.name for pd in self.param_defs)
         for k in defaults:
             if k not in ks:
-                raise AttributeError("Params.with_defaults: "
-                    "Param %r with overridden default does not exist" % k)
+                raise AttributeError("Params.with_defaults: Cannot override "
+                    "default for %r because that parameter does not exist" % k)
 
         param_defs = []
         for param_def in self.param_defs:

@@ -8,7 +8,7 @@ import random
 import sys
 
 from alignment import Alignment
-from dataset_config import DATASET_CONFIGS
+from dataset_config import DATASET_CONFIGS, OUT_HOME_DIR
 from scorers.base import get_scorer
 from singlerun import compute_scores, prepare_header, write_scores
 from utils.bio import get_column
@@ -20,7 +20,7 @@ from utils.general import get_timestamp
 # Run experiments
 ################################################################################
 
-def run_experiments(scorer_config, dataset_name, out_dirname, limit=0):
+def run_experiments(scorer_config, dataset_name, limit=0, no_parallel=False):
     """
     Iterator that returns lists of pairs of observed/expected scores for each
     column in a file, for all alignment files in the datasets requested.  Each
@@ -33,8 +33,6 @@ def run_experiments(scorer_config, dataset_name, out_dirname, limit=0):
         Dict mapping scorer names to their desired parameters
     @param dataset_name:
         name of dataset to use
-    @param out_dirname:
-        directory to write scores to
     @param limit:
         Max number of alignments to score
     """
@@ -52,11 +50,8 @@ def run_experiments(scorer_config, dataset_name, out_dirname, limit=0):
         scorers.append(get_scorer(scorer_name, **scorer_params))
 
     # Handle out_dirname
-    out_dirname = os.path.abspath(out_dirname)
-    if not os.path.exists(out_dirname):
-        raise IOError("Directory '%s' does not exist." % out_dirname)
     ts = get_timestamp()
-    out_dirname = os.path.join(args.out_dirname, "experiment-%s" % ts)
+    out_dirname = os.path.join(OUT_HOME_DIR, "experiment-%s" % ts)
     sys.stderr.write("Writing scores to %s/\n" % out_dirname)
     os.mkdir(out_dirname)
 
@@ -68,10 +63,13 @@ def run_experiments(scorer_config, dataset_name, out_dirname, limit=0):
 
     # Shortcut if no parallelization.  Also helps debugging.
     if len(align_files) == 1:
-        yield align_files[0], run_experiment(align_files[0])
-        return
+        no_parallel = True
 
-    it = parallelize.imap_unordered(run_experiment, align_files)
+    if no_parallel:
+        it = ((af, run_experiment(af)) for af in align_files)
+    else:
+        it = parallelize.imap_unordered(run_experiment, align_files)
+
     for align_file, score_tups in it:
         yield align_file, score_tups
 
@@ -86,10 +84,9 @@ def run_experiment_helper(scorers, dataset_config, out_dir):
         test_file = dataset_config.get_test_file(align_file)
         alignment = Alignment(align_file, test_file=test_file,
                 parse_testset_fn=dataset_config.parse_testset_fn)
-#TODO: build ppc (probably just drawing distribution of rates for conserved/unconserved) for mayrose04
         score_tups = compute_scores(alignment, scorers)
-        out_file = ".".join(align_file[len(dataset_config.aln_dir)+1:].replace('/', '___').split('.')[:-1]) + ".res"
-        with open(os.path.join(out_dir, out_file), 'w') as f:
+        out_file = dataset_config.get_out_file(align_file, out_dir)
+        with open(out_file, 'w') as f:
             write_scores(alignment, score_tups, scorer_names, f)
         return score_tups
     return run_experiment
@@ -106,10 +103,11 @@ if __name__ == "__main__":
 
     parser.add_argument('scorer_names')
     parser.add_argument('dataset_name')
-    parser.add_argument('out_dirname')
 
     parser.add_argument('-n', dest='limit', type=int, default=0,
         help="max number of alignment files to run the experiments on.")
+    parser.add_argument('--no_parallel', action='store_true',
+        help="do not parallelize the experiments. Useful for debugging.")
     args = parser.parse_args()
 
     scorer_names = args.scorer_names.split(',')
@@ -118,6 +116,6 @@ if __name__ == "__main__":
     for align_file, score_tups in run_experiments(
             scorer_config=scorer_config,
             dataset_name=args.dataset_name,
-            out_dirname=args.out_dirname,
-            limit=args.limit):
+            limit=args.limit,
+            no_parallel=args.no_parallel):
         pass

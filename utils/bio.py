@@ -20,12 +20,17 @@ def get_column(col_num, msa):
 
 PSEUDOCOUNT = .0000001
 
-def weighted_freq_count_pseudocount(col, seq_weights, pc_amount):
+def weighted_freq_count_pseudocount(col, seq_weights, pc_amount, with_gap=True):
     """
     Return the weighted frequency count for a column--with pseudocount.
     """
-    freq_counts = np.zeros(len(amino_acids))
+    sz = len(amino_acids)
+    if not with_gap:
+        sz -= 1
+    freq_counts = np.zeros(sz) + pc_amount
     for j,aa in enumerate(col):
+        if not with_gap and aa == '-':
+            continue
         freq_counts[aa_to_index[aa]] += seq_weights[j]
     freq_counts /= np.sum(freq_counts)
     return freq_counts

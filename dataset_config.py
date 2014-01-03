@@ -2,7 +2,8 @@ import os
 import random
 
 
-_DATA_HOME_DIR = os.path.abspath("../../data/cs07/")
+DATA_HOME_DIR = os.path.abspath("../../data/cs07/")
+OUT_HOME_DIR = os.path.abspath("../../out/")
 
 class DatasetConfig(object):
 
@@ -20,8 +21,8 @@ class DatasetConfig(object):
         @param parse_testset_fn:
             function of (test_file, args) to parse the test file for this dataset
         """
-        self.aln_dir = os.path.join(_DATA_HOME_DIR, aln_dir)
-        self.test_dir = os.path.join(_DATA_HOME_DIR, test_dir)
+        self.aln_dir = os.path.join(DATA_HOME_DIR, aln_dir)
+        self.test_dir = os.path.join(DATA_HOME_DIR, test_dir)
         self._align_to_test = align_to_test
         self.parse_testset_fn = parse_testset_fn
 
@@ -48,6 +49,11 @@ class DatasetConfig(object):
     def get_test_file(self, align_file):
         return os.path.join(self.test_dir,
                 self._align_to_test(align_file[len(self.aln_dir)+1:]))
+
+    def get_out_file(self, align_file, out_dir, ext='.res'):
+        out_name = ".".join(align_file[len(self.aln_dir)+1:].replace('/', '___').split('.')[:-1])
+        return os.path.join(out_dir, out_name + ext)
+
 
 
 ################################################################################

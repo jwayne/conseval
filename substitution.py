@@ -135,16 +135,20 @@ def read_bg_distribution(fname):
 
     Code by Tony Capra 2007.
     """
-    distribution = []
+    distribution = None
     with open(fname) as f:
         for line in f:
             if line[0] == '#': continue
-            line = line[:-1]
-            distribution = line.split()
-            distribution = map(float, distribution)
+            if distribution:
+                raise ValueError("Distribution file has multiple lines")
+            fields = line.strip().split()
+            distribution = np.array(map(float, fields))
     # use a range to be flexible about round off
     if .997 > sum(distribution) or sum(distribution) > 1.003:
         raise ValueError("Distribution sums to %f != 1." % sum(distribution))
+    # sanity check no amino acid has 0 frequency
+    if np.any(distribution == 0):
+        raise ValueError("Distriution gives some amino acid(s) 0 frequency")
     return distribution
 
 

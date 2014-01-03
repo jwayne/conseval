@@ -8,6 +8,7 @@ import time
 
 from alignment import Alignment
 from dataset_config import DATASET_CONFIGS
+from phylotree import read_phylotree, check_phylotree
 from utils import parallelize
 from utils.general import get_timestamp
 
@@ -58,5 +59,14 @@ if __name__ == "__main__":
             tree_file = align_file[:-3] + "phy_phyml_tree.txt"
             if not os.path.exists(tree_file):
                 align_files.append(align_file)
+            else:
+                alignment = Alignment(align_file)
+                try:
+                    tree = read_phylotree(tree_file)
+                except:
+                    align_files.append(align_file)
+                    continue
+                if not check_phylotree(alignment, tree):
+                    align_files.append(align_file)
     print "# Total num alignments: %d\n" % len(align_files)
     compute_trees(align_files, args.out_file)
