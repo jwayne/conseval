@@ -21,7 +21,9 @@ from utils.bio import get_column
 
 class Intrepid(Scorer):
 
-    params = Scorer.params.extend(paramdef_bg_distribution)
+    params = Scorer.params.with_defaults({
+        'normalize': True
+    }).extend(paramdef_bg_distribution)
 
     def __init__(self, **params):
         super(Intrepid, self).__init__(**params)
@@ -32,9 +34,10 @@ class Intrepid(Scorer):
             "use_gap_penalty": False,
             "use_seq_weights": False,
             "window_size": 0,
-            "normalize_scores": False,
+            "normalize": False,
         }
         self.subscorer = JsDivergence(**params)
+
 
     def _score(self, alignment):
         tree = alignment.get_phylotree()

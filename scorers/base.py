@@ -1,6 +1,4 @@
-import math
 import numpy as np
-import re
 import os
 import sys
 import time
@@ -64,11 +62,11 @@ class Scorer(WithParams):
     # along with these defaults.  Defaults can be overridden and parameters
     # can be extended, see scorers/mayrose04.py for an example.
     params = Params(
-        ParamDef('window_size', 3, int, lambda x: x>=0,
+        ParamDef('window_size', 0, int, lambda x: x>=0,
             help="Number of residues on either side included in the window"),
         ParamDef('window_lambda', .5, float, lambda x: 0<=x<=1,
             help="lambda for window heuristic linear combination. Meaningful only if window_size != 0."),
-        ParamDef('normalize_scores', False, bool,
+        ParamDef('normalize', False, bool,
             help="return z-scores (over the alignment) of each column, instead of original scores"),
     )
 
@@ -100,7 +98,7 @@ class Scorer(WithParams):
         if self.window_size:
             scores = window_score(scores, self.window_size,
                     self.window_lambda)
-        if self.normalize_scores:
+        if self.normalize:
             scores = calc_z_scores(scores, -999)
 
         dt = time.time() - t0 #len(alignment.msa), len(alignment.msa[0])
@@ -117,6 +115,7 @@ class Scorer(WithParams):
         @return:
             List of scores for each site
         """
+        raise NotImplementedError()
 
 
 
@@ -135,7 +134,6 @@ def window_score(scores, window_len, lam=.5):
     
     Code by Tony Capra 2007.
     """
-
     w_scores = scores[:]
 
     for i in xrange(window_len, len(scores) - window_len):
@@ -155,35 +153,13 @@ def window_score(scores, window_len, lam=.5):
     return w_scores
 
 
-def calc_z_scores(scores, score_cutoff):
+def calc_z_scores(scores):
     """
     Calculates the z-scores for a set of scores. Scores below
     score_cutoff are not included.
-
-    Code by Tony Capra 2007.
     """
-
-    average = 0.
-    std_dev = 0.
-    z_scores = []
-    num_scores = 0
-
-    for s in scores:
-        if s > score_cutoff:
-            average += s
-            num_scores += 1
-    if num_scores != 0:
-        average /= num_scores
-
-    for s in scores:
-        if s > score_cutoff:
-            std_dev += ((s - average)**2) / num_scores
-    std_dev = math.sqrt(std_dev)
-
-    for s in scores:
-        if s > score_cutoff and std_dev != 0:
-            z_scores.append((s-average)/std_dev)
-        else:
-            z_scores.append(-1000.0)
-
-    return z_scores
+    x = np.array(scores)
+    avg = np.mean(x)
+    stdev = np.std(x)
+    z_scores = (x - avg) / stdev
+    return list(z_scores)

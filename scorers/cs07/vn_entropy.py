@@ -13,10 +13,15 @@ class VnEntropy(Cs07Scorer):
 
     params = Cs07Scorer.params.extend(paramdef_sim_matrix)
 
+    SCORE_OVER_GAP_CUTOFF = 0
+
+
     def _score_col(self, col, seq_weights):
-        """Calculate the von Neuman Entropy as described in Caffrey et al. 04.
+        """
+        Calculate the von Neuman Entropy as described in Caffrey et al. 04.
         This code was adapted from the implementation found in the PFAAT project
-        available on SourceForge."""
+        available on SourceForge.
+        """
 
         aa_counts = [0.] * 20
         for aa in col:
@@ -55,4 +60,5 @@ class VnEntropy(Cs07Scorer):
             if e > (10**-10):
                 vne -= e * math.log(e) / math.log(20)
 
+        # Presumably this makes it so that 1 is conserved, and 0 is not.
         return 1 - vne

@@ -9,7 +9,14 @@ from utils.bio import aa_to_index
 
 class SumOfPairs(Cs07Scorer):
 
-    params = Cs07Scorer.params.extend(paramdef_sim_matrix)
+    # Normalize because the score doesn't go from 0 to 1...
+    params = Cs07Scorer.params.with_defaults({
+        'normalize': True
+    }).extend(paramdef_sim_matrix)
+
+    # TODO: determine what score is representative of non-conserved scores,
+    # for SCORE_OVER_GAP_CUTOFF
+
 
     def _score_col(self, col, seq_weights):
         """
@@ -25,7 +32,7 @@ class SumOfPairs(Cs07Scorer):
                     curr_sum += seq_weights[i] * seq_weights[j] * \
                             self.sim_matrix[aa_to_index[col[i]]][aa_to_index[col[j]]]
 
-        if max_sum != 0:
+        if max_sum:
             curr_sum /= max_sum
         else:
             curr_sum = 0.

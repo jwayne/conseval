@@ -9,6 +9,9 @@ from utils.bio import weighted_freq_count_pseudocount, PSEUDOCOUNT
 
 class ShannonEntropy(Cs07Scorer):
 
+    SCORE_OVER_GAP_CUTOFF = 0
+
+
     def _score_col(self, col, seq_weights):
         """
         Calculates the Shannon entropy of the column col.
@@ -19,13 +22,14 @@ class ShannonEntropy(Cs07Scorer):
         fc = weighted_freq_count_pseudocount(col, seq_weights, PSEUDOCOUNT)
 
         h = 0.
-        for i in xrange(len(fc)):
-            if fc[i] != 0:
-                h += fc[i] * math.log(fc[i])
+        for fc_i in fc:
+            if fc_i:
+                h -= fc_i * math.log(fc_i)
 
-        #h /= math.log(len(fc))
+        # Convert score so that it's between 0 and 1.
+        # Recall that shannon entropy is between 0 and log(number of values with nonzero freq)
+        # XXX: Why involve len(col) if we have a pseudocount?
         h /= math.log(min(len(fc), len(col)))
 
-        inf_score = 1 - (-1 * h)
-
-        return inf_score
+        # Convert score so that 1 is conserved, and 0 is not.
+        return 1 - h

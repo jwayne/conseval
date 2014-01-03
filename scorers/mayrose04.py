@@ -16,9 +16,7 @@ from utils.gamma import DiscreteGammaDistribution
 
 class Mayrose04(Scorer):
 
-    params = Scorer.params.with_defaults({
-        'window_size': 0,
-    }).extend(
+    params = Scorer.params.extend(
         ParamDef('alpha', 1, float, lambda x: x>0,
             help="alpha parameter into the gamma prior for rate r. Var(r) = 1/alpha"),
         ParamDef('n_gamma_bins', 16, int, lambda x: x>0,
@@ -71,6 +69,7 @@ class Mayrose04(Scorer):
             else:
                 score = self._score_col(col, names_map, P_cached, tree)
             scores.append(score)
+#        print np.var(scores)
         return scores
 
 

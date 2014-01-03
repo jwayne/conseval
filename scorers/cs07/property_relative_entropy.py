@@ -13,6 +13,10 @@ class PropertyRelativeEntropy(Cs07Scorer):
     params = Cs07Scorer.params.extend(paramdef_bg_distribution)
 
     property_partition = [['V','L', 'I','M'], ['F','W','Y'], ['S','T'], ['N','Q'], ['H','K','R'], ['D','E'], ['A','G'], ['P'], ['C']]
+    prop_bg_freq = [0.248, 0.092, 0.114, 0.075, 0.132, 0.111, 0.161, 0.043, 0.024, 0.000] # from BL62
+
+    SCORE_OVER_GAP_CUTOFF = 0
+
 
     def _score_col(self, col, seq_weights):
         """
@@ -20,12 +24,12 @@ class PropertyRelativeEntropy(Cs07Scorer):
         partition of the amino acids. Similar to Williamson '95.  See shannon_entropy()
         for more general info.
         """
-        prop_bg_freq = []
-        bg_distr = self.bg_distribution
-        if len(bg_distr) == len(self.property_partition):
-            prop_bg_freq = bg_distr
+        if len(self.bg_distribution) == len(self.property_partition):
+            prop_bg_freq = self.bg_distribution
         else:
-            prop_bg_freq = [0.248, 0.092, 0.114, 0.075, 0.132, 0.111, 0.161, 0.043, 0.024, 0.000] # from BL62
+            # XXX: shouldn't we sum the bg distribution frequencies instead of using
+            # some fixed prop bg freq?
+            prop_bg_freq = self.prop_bg_freq
 
         fc = weighted_freq_count_pseudocount(col, seq_weights, PSEUDOCOUNT)
 
@@ -37,7 +41,11 @@ class PropertyRelativeEntropy(Cs07Scorer):
 
         d = 0.
         for i in xrange(len(prop_fc)):
-            if prop_fc[i] != 0 and prop_bg_freq[i] != 0:
+            if prop_fc[i] and prop_bg_freq[i]:
                 d += prop_fc[i] * math.log(prop_fc[i] / prop_bg_freq[i], 2)
+
+        # Convert score so that it's between 0 and 1.
+        # XXX: why is relative entropy assumed to be bounded?
+        d /= math.log(len(prop_fc))
 
         return d
