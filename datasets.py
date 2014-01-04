@@ -2,8 +2,8 @@ import os
 import random
 
 
-DATA_HOME_DIR = os.path.abspath("../../data/cs07/")
-OUT_HOME_DIR = os.path.abspath("../../out/")
+DATA_HOME_DIR = os.path.abspath("data/cs07/")
+OUT_HOME_DIR = os.path.abspath("out/")
 
 class DatasetConfig(object):
 
@@ -26,7 +26,7 @@ class DatasetConfig(object):
         self._align_to_test = align_to_test
         self.parse_testset_fn = parse_testset_fn
 
-    def get_align_files(self, limit=0):
+    def get_align_files(self, limit=0, section=None):
         """
         Get all aln files for `dataset_name`.
         """
@@ -44,6 +44,15 @@ class DatasetConfig(object):
         if limit and len(align_files) > limit:
             random.seed(1000)
             align_files = random.sample(align_files, limit)
+        if section:
+            lo, hi = section
+            if lo < 0 or lo >= hi or hi > 1:
+                raise ValueError("Bad section %r" % section)
+            random.seed(1000)
+            random.shuffle(align_files)
+            lo = int(lo * len(align_files))
+            hi = int(hi * len(align_files))
+            align_files = align_files[lo:hi]
         return sorted(align_files)
 
     def get_test_file(self, align_file):

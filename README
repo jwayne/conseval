@@ -44,7 +44,7 @@ This code supports the following functions:
 
 (TBD)
 
-The substitution rate matrix files are stored in 'matrix/', and can be
+The substitution rate matrix files are stored in 'substitution/', and can be
 customized.
 
 

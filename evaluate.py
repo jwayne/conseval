@@ -3,6 +3,11 @@ import argparse
 import os
 import sys
 
+from alignment import Alignment
+from batchrun import read_config_file, read_config_datasets
+from datasets import DATASET_CONFIGS
+from singlerun import read_scores
+
 
 def get_evaluator(name):
     try:
@@ -12,6 +17,17 @@ def get_evaluator(name):
     except (ImportError, AttributeError), e:
         raise ImportError("%s: %s is not a valid evaluator." % (e, name))
     return fn
+
+
+def _align_file_iterator(dataset_config, align_files, dataset_dir):
+    for align_file in align_files:
+        test_file = dataset_config.get_test_file(align_file)
+        out_file = dataset_config.get_out_file(align_file, dataset_dir)
+        alignment = Alignment(align_file, test_file=test_file,
+                parse_testset_fn=dataset_config.parse_testset_fn)
+        score_tups = read_scores(out_file)
+        yield (alignment, score_tups)   
+
 
 
 ################################################################################
@@ -24,14 +40,26 @@ def main():
 
     parser.add_argument('evaluator_name',
         help="name of evaluator")
-    parser.add_argument('batch_output_dirs',
-        help="directory(s) containing scores, i.e. output directory(s) from batch running scorers")
+    parser.add_argument('batch_output_dir',
+        help="directory containing scores, i.e. output directory from batch running scorers")
 
     args = parser.parse_args()
 
-    name = args.evaluator_name
-    evaluator = get_evaluator(name)
-    args.scores_dir
+    ev_name = args.evaluator_name
+    ev_fn = get_evaluator(ev_name)
+    batch_dir = os.path.abspath(args.batch_output_dir)
+
+    config_file = os.path.join(batch_dir, 'config.yaml')
+    config = read_config_file(config_file)
+    datasets = read_config_datasets(config)
+    scorer_names = [sc['id'] for sc in config['scorers']]
+
+    for dataset_id, dataset_name, dc_params in datasets:
+        dataset_dir = os.path.join(batch_dir, dataset_id)
+        dc = DATASET_CONFIGS[dataset_name]
+        align_files = dc.get_align_files(**dc_params)
+        it = _align_file_iterator(dc, align_files, dataset_dir)
+        ev_fn(it, scorer_names, batch_dir)
 
 
 if __name__ == "__main__":

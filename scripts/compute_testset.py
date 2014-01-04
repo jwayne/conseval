@@ -10,7 +10,8 @@ import sys
 dc=DC[sys.argv[1]]
 alns=[]
 align_files=dc.get_align_files()
+
 print len(align_files)
 for align_file in align_files:
     test_file = dc.get_test_file(align_file)
-    alns.append(Alignment(align_file, test_file=test_file, parse_testset_fn=dc.parse_testset_fn))
+    aln = Alignment(align_file, test_file=test_file, parse_testset_fn=dc.parse_testset_fn)

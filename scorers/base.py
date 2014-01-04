@@ -4,6 +4,7 @@ import sys
 import time
 
 from params import ParamDef, Params, WithParams
+from utils.stats import zscore
 
 
 ################################################################################
@@ -88,7 +89,7 @@ class Scorer(WithParams):
             scores = window_score(scores, self.window_size,
                     self.window_lambda)
         if self.normalize:
-            scores = calc_z_scores(scores, -999)
+            scores = list(zscore(scores))
 
         dt = time.time() - t0 #len(alignment.msa), len(alignment.msa[0])
         return scores
@@ -140,15 +141,3 @@ def window_score(scores, window_len, lam=.5):
             w_scores[i] = (1 - lam) * (curr_sum / num_terms) + lam * scores[i]
 
     return w_scores
-
-
-def calc_z_scores(scores):
-    """
-    Calculates the z-scores for a set of scores. Scores below
-    score_cutoff are not included.
-    """
-    x = np.array(scores)
-    avg = np.mean(x)
-    stdev = np.std(x)
-    z_scores = (x - avg) / stdev
-    return list(z_scores)

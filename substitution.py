@@ -153,14 +153,14 @@ def read_bg_distribution(fname):
 
 
 paramdef_sub_model = ParamDef(
-        'sub_model', 'matrix/lg_LG.PAML.txt', os.path.abspath,
+        'sub_model', 'substitution/lg_LG.PAML.txt', os.path.abspath,
         load_fxn=SubstitutionModel,
         help=".dat matrix file of rate matrix and bg distribution")
 paramdef_sim_matrix = ParamDef(
-        'sim_matrix', 'matrix/blosum62.bla', os.path.abspath,
+        'sim_matrix', 'substitution/blosum62.bla', os.path.abspath,
         load_fxn=read_sim_matrix,
         help="similarity matrix file, *.bla or *.qij")
 paramdef_bg_distribution = ParamDef(
-        'bg_distribution', 'matrix/blosum62.distribution', os.path.abspath,
+        'bg_distribution', 'substitution/blosum62.distribution', os.path.abspath,
         load_fxn=read_bg_distribution,
         help="background distribution file, e.g., swissprot.distribution")

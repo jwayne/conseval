@@ -1,13 +1,10 @@
+#!/usr/bin/python
 import argparse, math, os, sys
 from alignment import Alignment
 from params import parse_params
 from scorers.base import get_scorer
 from utils.bio import get_column
 
-
-################################################################################
-# Input/output
-################################################################################
 
 def compute_scores(alignment, scorers):
     # Compute list of scores, grouped by scorer
@@ -27,13 +24,9 @@ def compute_scores(alignment, scorers):
     return score_tups
 
 
-def parse_score(score):
-    if isinstance(score, float):
-        return str(round(score,4))
-    elif score is None:
-        return '-'
-    return str(score)
-
+################################################################################
+# Input/output
+################################################################################
 
 def prepare_header(scorers):
     header = []
@@ -83,8 +76,38 @@ def write_scores(alignment, score_tups, scorer_names, f=sys.stdout,
             site = cur_aa
         else:
             site = "".join(get_column(i, alignment.msa))
-        f.write("%d\t%s\t%s\n" % (i+1, site, "\t".join(map(parse_score,score_tup))))
+        f.write("%d\t%s\t%s\n" % (i+1, site, "\t".join(map(_write_score_helper, score_tup))))
 
+
+def read_scores(fname):
+    prevline = None
+    score_tups = []
+    with open(fname) as f:
+        for line in f:
+            if line.startswith('#'):
+                prevline = line
+                continue
+            line = line.strip()
+            if not line:
+                continue
+            if prevline:
+                scorer_names = prevline.strip().split()[2:]
+            prevline = None
+            score_tups.append(map(_read_score_helper, line.split()[2:]))
+    return score_tups
+
+
+def _write_score_helper(score):
+    if isinstance(score, float):
+        return str(round(score,4))
+    elif score is None:
+        return '-'
+    return str(score)
+
+def _read_score_helper(field):
+    if field == '-':
+        return None
+    return float(field)
 
 
 ################################################################################
