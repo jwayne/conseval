@@ -3,6 +3,7 @@
 Python 2.6.*, 2.7.*
 numpy
 biopython
+PyYAML (for parsing config files)
 PhyML (for computing phylogenetic trees)
 
 

@@ -10,17 +10,6 @@ from params import ParamDef, Params, WithParams
 # Get a Scorer by name
 ################################################################################
 
-def get_all_scorer_names():
-    dirname = os.path.abspath('scorers')
-    names = []
-    for root, _, files in os.walk(dirname):
-        for file in files:
-            if not file.endswith('.py') or file == '__init__.py' or file == 'base.py':
-                continue
-            name = os.path.join(root, file)[len(dirname)+1:].replace('/','.')
-            names.append(name[:-3])
-    return sorted(names)
-
 def get_scorer(name, **params):
     """
     Get the appropriate Scorer object in the module scorers.`name`, initialized
@@ -44,7 +33,7 @@ def get_scorer_cls(name):
         scorer_clsname = "".join(s.capitalize() for s in name.split('.')[-1].split('_'))
         scorer_cls = getattr(scorer_module, scorer_clsname)
     except (ImportError, AttributeError), e:
-        raise ImportError("%s: %s is not a valid scoring method." % (e, name))
+        raise ImportError("%s: %s is not a valid scorer." % (e, name))
     return scorer_cls
 
 

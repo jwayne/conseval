@@ -6,11 +6,12 @@ import numpy as np
 import os
 import random
 import sys
+import yaml
 
 from alignment import Alignment
-from dataset_config import DATASET_CONFIGS, OUT_HOME_DIR
+from datasets import DATASET_CONFIGS, OUT_HOME_DIR
 from scorers.base import get_scorer
-from singlerun import compute_scores, prepare_header, write_scores
+from single import compute_scores, prepare_header, write_scores
 from utils.bio import get_column
 from utils import parallelize
 from utils.general import get_timestamp
@@ -51,7 +52,7 @@ def run_experiments(scorer_config, dataset_name, limit=0, no_parallel=False):
 
     # Handle out_dirname
     ts = get_timestamp()
-    out_dirname = os.path.join(OUT_HOME_DIR, "experiment-%s" % ts)
+    out_dirname = os.path.join(OUT_HOME_DIR, "batch-%s" % ts)
     sys.stderr.write("Writing scores to %s/\n" % out_dirname)
     os.mkdir(out_dirname)
 
@@ -98,24 +99,30 @@ def run_experiment_helper(scorers, dataset_config, out_dir):
 # Cmd line driver
 ################################################################################
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run experiments of computing conservation scores on a set of alignment files and comparing those results with the test data.")
+def main():
+    parser = argparse.ArgumentParser(
+        description="Produce conservation scores for a dataset via multiple scorers.")
 
-    parser.add_argument('scorer_names')
-    parser.add_argument('dataset_name')
+    parser.add_argument('config_file',
+        help="YAML config file specifying the dataset and scorers")
 
-    parser.add_argument('-n', dest='limit', type=int, default=0,
-        help="max number of alignment files to run the experiments on.")
-    parser.add_argument('--no_parallel', action='store_true',
-        help="do not parallelize the experiments. Useful for debugging.")
+#    parser.add_argument('-n', dest='limit', type=int, default=0,
+#        help="max number of alignment files to run the experiments on.")
+#    parser.add_argument('--no_parallel', action='store_true',
+#        help="do not parallelize the experiments. Useful for debugging.")
     args = parser.parse_args()
 
-    scorer_names = args.scorer_names.split(',')
-    scorer_config = dict((name, {}) for name in scorer_names)
+    with open(args.config_file) as f:
+        config_yaml = f.read()
+    config = yaml.load(config_yaml)
+    config[1]
 
     for align_file, score_tups in run_experiments(
             scorer_config=scorer_config,
             dataset_name=args.dataset_name,
-            limit=args.limit,
-            no_parallel=args.no_parallel):
+            limit=args.limit):
         pass
+
+
+if __name__ == "__main__":
+    main()

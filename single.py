@@ -1,9 +1,7 @@
-#!/usr/bin/env python
-
 import argparse, math, os, sys
 from alignment import Alignment
 from params import parse_params
-from scorers.base import get_scorer, get_all_scorer_names, get_scorer_cls
+from scorers.base import get_scorer
 from utils.bio import get_column
 
 
@@ -95,16 +93,12 @@ def write_scores(alignment, score_tups, scorer_names, f=sys.stdout,
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Produce conservation scores for an alignment file.",
-        usage="%(prog)s scorer_name align_file [-h] [-l] [options]")
+        description="Produce conservation scores for an alignment file.")
 
-    parser.add_argument('scorer_name', nargs='?',
+    parser.add_argument('scorer_name',
         help="conservation estimation method")
-    parser.add_argument('align_file', nargs='?',
+    parser.add_argument('align_file', 
         help="path to alignment file to score")
-
-    parser.add_argument('-l', '--list', dest='list_params', action='store_true',
-        help="show list of available params for the -a, -p flags")
 
     parser.add_argument('-a', dest='align_params', action='append', default=[],
         help="parameters associcated with align_file, can specify multiple. Specify as '-a inputName=inputValue', e.g. '-a tree_file=tree.txt'")
@@ -119,29 +113,6 @@ def parse_args():
     args = parser.parse_args()
     args.align_params = parse_params(args.align_params)
     args.scorer_params = parse_params(args.scorer_params)
-
-    if args.list_params:
-        print "================"
-        print "Alignment params:"
-        print "================"
-        print "\n".join("    %s" % pd for pd in Alignment.params.param_defs)
-        print ""
-        if args.scorer_name:
-            scorer_names = [args.scorer_name]
-        else:
-            scorer_names = get_all_scorer_names()
-        for scorer_name in scorer_names:
-            print "================"
-            print "Scorer params for %s:" % scorer_name
-            print "================"
-            scorer_cls = get_scorer_cls(scorer_name)
-            print "\n".join("    %s" % pd for pd in scorer_cls.params.param_defs)
-            print ""
-        sys.exit(0)
-
-    if not args.scorer_name or not args.align_file:
-        parser.print_help()
-        sys.exit(0)
 
     return args
 

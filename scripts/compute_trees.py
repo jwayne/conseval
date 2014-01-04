@@ -7,7 +7,7 @@ import sys
 import time
 
 from alignment import Alignment
-from dataset_config import DATASET_CONFIGS
+from datasets import DATASET_CONFIGS
 from phylotree import read_phylotree, check_phylotree
 from utils import parallelize
 from utils.general import get_timestamp

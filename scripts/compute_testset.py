@@ -4,7 +4,7 @@ Create an Alignment object for each alignment file in a dataset.
 This can be used to easily test parsing of a test set.
 """
 from alignment import Alignment
-from dataset_config import DATASET_CONFIGS as DC
+from datasets import DATASET_CONFIGS as DC
 import sys
 
 dc=DC[sys.argv[1]]

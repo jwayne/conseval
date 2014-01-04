@@ -73,7 +73,7 @@ def _parse_testset_csa(test_file, seq):
             if line.startswith('#'):
                 continue
             fields = line.split()
-            #val is 1 if catalytic site, -1 if not
+            #fields[1] is 1 if catalytic site, -1 if not
             pos, val = int(fields[0]), int(int(fields[1]) > 0)
             if pos != len(vals):
                 raise ValueError("%r: pos = %d, need %d" % (test_file, pos, len(vals)))
@@ -83,6 +83,7 @@ def _parse_testset_csa(test_file, seq):
     return vals
 
 
+EC_MAX_DIST = 4
 def _parse_testset_ec(test_file, seq):
     """
     Test files have 3-column rows of (position, aa, value).  Positions are
@@ -100,7 +101,8 @@ def _parse_testset_ec(test_file, seq):
             if line.startswith('#'):
                 continue
             fields = line.split()
-            pos, aa, val = int(fields[0]), fields[1], float(fields[2])
+            #fields[2] <= 4.0 if catalytic site, > 4.0 if not
+            pos, aa, val = int(fields[0]), fields[1], int(float(fields[2]) <= EC_MAX_DIST)
             lines.append((pos, aa, val))
     seq_nogaps = ''.join([aa for aa in seq if aa != '-'])
 
