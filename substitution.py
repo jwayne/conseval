@@ -56,23 +56,24 @@ class SubstitutionModel(object):
         # http://www.ebi.ac.uk/goldman/dayhoff/jtt-dcmut.dat
         self.Q = self.S * self.PI
         # Q should be normalized so that sum_i sum_(j!=i) q_ij * freqs_i = 1
-        # according to KosiolGoldman2005 pg 1 + the same comment above
+        # according to KosiolGoldman2005 pg 1 + the same comment above.  Verify this.
         Q_rowsums = np.asarray(np.sum(self.Q,1)).reshape(-1) - np.diag(self.Q)
         Q_rowprod = np.dot(self.freqs, Q_rowsums)
         if np.abs(Q_rowprod - 1) > PRECISION:
             raise ValueError("sum_i sum_(j!=i) q_ij * freqs_i = %f != 1" % Q_rowprod)
 
-        # Calculate A = PI^(-1/2) * S * PI^(1/2) according to SchabauerEtAl2012 pg 4
+        # Calculate A = PI^(1/2) * S * PI^(1/2) according to SchabauerEtAl2012 pg 4
         PI_pow_poshalf = np.diag(np.diag(self.PI)**.5)
         PI_pow_neghalf = np.diag(np.diag(PI_pow_poshalf)**(-1))
         self.A = PI_pow_poshalf * self.S * PI_pow_poshalf
-        # Calculate Eigvecs * diag(Eigvals) * Eigvecs^-1 = A according to
-        # MolerVan_Loan2003 pg 20.  SchabauerEtAl2012 pg 4 is oddly wrong.
+        # Calculate Eigvecs * diag(Eigvals) * Eigvecs.T = A according to
+        # MolerVan_Loan2003 pg 20, SchabauerEtAl2012 pg 4.
         self.A_eigvals, A_eigvecs = np.linalg.eig(self.A)
-        A_eigvecsInv = np.linalg.inv(A_eigvecs)
+        if np.any(np.abs(A_eigvecs * np.diag(self.A_eigvals) * A_eigvecs.T - self.A) > PRECISION):
+            raise ValueError("A_eigvecs * diag(A_eigvals) * A_eigvecs.T != A")
         # Prepare multipliers for calc_P.  See calc_P docs for details.
         self.calc_P_left = PI_pow_neghalf * A_eigvecs
-        self.calc_P_right = A_eigvecsInv * PI_pow_poshalf
+        self.calc_P_right = A_eigvecs.T * PI_pow_poshalf
         # Verify that probability calculation is OK.
         P = self.calc_P()
         if np.any(np.abs(self.freqs*P - self.freqs) > PRECISION):
@@ -82,7 +83,7 @@ class SubstitutionModel(object):
         """
         Compute the probability matrix P
             P = PI^(-1/2) * e^(At) * PI^(1/2)
-            [src: MolerVan_Loan2003 pg 20. SchabauerEtAl2012 pg 4 is oddly wrong]
+            [src: MolerVan_Loan2003 pg 20, SchabauerEtAl2012 pg 4]
         where
             e^(At) = Eigvecs * e^(Eigvals*t) * Eigvecs^-1
             [src: SchabauerEtAl2012 pg 4]

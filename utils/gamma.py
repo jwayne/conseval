@@ -32,8 +32,9 @@ class DiscreteGammaDistribution(object):
             # of the bin
             #XXX: why does rate4site use alpha+1?
             #XXX: why does rate4site multiply P[r_i] by alpha/beta*n_cats?
-            #XXX: I get uniform cat_probs without the above 2 mods, which makes
-            # sense, but I still don't get why the mods work.
+            #XXX: I get uniform cat_probs without the above 2 mods, which makes sense.
+            # I don't get why rate4site does something different then.
+            cat_probs[cat] = 1/n_cats
             cat_probs[cat] = (gammainc(alpha+1, cat_ubounds[cat]*beta) - \
                     gammainc(alpha+1, lo*beta)) * alpha / beta * n_cats
             # set lo for next round
