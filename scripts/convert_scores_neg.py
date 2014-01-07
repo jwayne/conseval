@@ -5,7 +5,7 @@ from conseval.io import read_batchscores, write_batchscores
 from evaluate import get_batchscore_dir
 
 
-def convert_scores_neg(dataset_name, scorer_ids):
+def convert_scores_neg(dataset_name, *scorer_ids):
     for scorer_id in scorer_ids:
         dc = DATASET_CONFIGS[dataset_name]
 

@@ -20,6 +20,7 @@ class DatasetConfig(object):
             are taken care of automatically
         @param parse_testset_fn:
             function of (test_file, args) to parse the test file for this dataset
+            Output contains 1 for positives, 0 for negatives, and None for unknown/unmatched
         """
         self.aln_dir = os.path.join(INPUT_DIR, aln_dir)
         self.test_dir = os.path.join(INPUT_DIR, test_dir)

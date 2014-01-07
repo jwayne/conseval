@@ -108,7 +108,7 @@ def main():
         help="name of evaluator")
     parser.add_argument('dataset_name',
         help="name of dataset")
-    parser.add_argument('scorer_ids', nargs='+',
+    parser.add_argument('scorer_ids', nargs='*',
         help="ids of batchscores to evaluate")
 
     args = parser.parse_args()
@@ -116,7 +116,7 @@ def main():
     ev_name = args.evaluator_name
     ev_fn = get_evaluator(ev_name)
 
-    ev_fn(args.dataset_name, args.scorer_ids)
+    ev_fn(args.dataset_name, *args.scorer_ids)
 
 
 if __name__ == "__main__":

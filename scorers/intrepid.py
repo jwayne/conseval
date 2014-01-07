@@ -13,8 +13,7 @@ Code by Josh Chen 2013.
 from __future__ import division
 import numpy as np
 
-from conseval.scorer import Scorer
-from scorers.cs07.js_divergence import JsDivergence
+from conseval.scorer import Scorer, get_scorer_cls
 from conseval.params import ParamDef
 from conseval.substitution import paramdef_bg_distribution
 from conseval.utils.bio import get_column
@@ -23,14 +22,19 @@ from conseval.utils.bio import get_column
 class Intrepid(Scorer):
 
     params = Scorer.params.extend(
+        ParamDef('subscorer_cls', 'cs07.js_divergence', load_fxn=get_scorer_cls,
+            help="sub scorer"),
+        # yuck
         ParamDef('lambda_pw', .5, float, lambda x: 0<=x<=1,
             help="prior weight lambda_pw in the Jensen-Shannon divergence"),
+        # yuck
         paramdef_bg_distribution
     )
 
     def __init__(self, **params):
         super(Intrepid, self).__init__(**params)
 
+        # yuck
         params.update({
             "gap_cutoff": 1,
             "use_gap_penalty": False,
@@ -38,7 +42,7 @@ class Intrepid(Scorer):
             "window_size": 0,
             "normalize": False,
         })
-        self.subscorer = JsDivergence(**params)
+        self.subscorer = self.subscorer_cls(**params)
 
 
     def _score(self, alignment):
@@ -57,22 +61,37 @@ class Intrepid(Scorer):
         assert p_node
         path = tree.get_path(p_node)
 
-        # Get sequences in each subtree in the path.
-        msas = [alignment.msa]
-        for subtree in path:
-            msas.append([alignment.msa[names_map[node.name]] for node in subtree.get_terminals()])
-        seq_weightss = [[1] * len(msa) for msa in msas]
+        # For each subtree in path, compute scores
+        subtree_scores = []
+        for subtree in reversed(path):
+            # Note that the ordering of sequences in the msa gets messed up.
+            inds = [names_map[node.name] for node in subtree.get_terminals()]
+            names = [alignment.names[i] for i in inds]
+            msa = [alignment.msa[i] for i in inds]
+            tree = subtree
+            def get_seq_weights():
+                if alignment._seq_weights:
+                    return alignment._seq_weights
+                x=alignment.get_seq_weights()
+                return [x[i] for i in inds]
+            aln = MockAlignment(names, msa, tree, get_seq_weights)
+            subtree_scores.append(self.subscorer._score(aln))
+        subtree_scores.append(self.subscorer._score(alignment))
 
-        # subscores = [[score for each subtree] for each col]
-        subscores = np.zeros((len(alignment.msa[0]), len(msas)))
-        for subtree_ind in xrange(len(msas)):
-            msa = msas[subtree_ind]
-            seq_weights = seq_weightss[subtree_ind]
-            for col_ind in xrange(len(msa[0])):
-                col = get_column(col_ind, msa)
-                subscores[col_ind][subtree_ind] = self.subscorer._score_col(col, seq_weights)
-        avg_subscores = np.mean(subscores,0)
-        subscores -= avg_subscores
+        site_scores = np.array(subtree_scores).T
+        site_avgscores = np.mean(site_scores,0)
 
-        scores = list(np.max(subscores,1))
+        scores = list(np.max(site_scores - site_avgscores, 1))
         return scores
+
+
+class MockAlignment():
+
+    def __init__(self, names, msa, tree, get_seq_weights):
+        self.names = names
+        self.msa = msa
+        self.tree = tree
+        self.get_seq_weights = get_seq_weights
+
+    def get_phylotree(self):
+        return self.tree
