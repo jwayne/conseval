@@ -10,9 +10,27 @@ import yaml
 from alignment import Alignment
 from datasets import DATASET_CONFIGS, OUTPUT_DIR
 from scorers.base import get_scorer
-from singlerun import compute_scores, prepare_header, write_scores, read_scores
+from singlerun import prepare_header, write_scores
 from utils import parallelize
 from utils.general import get_timestamp
+
+
+def compute_scores(alignment, scorers):
+    # Compute list of scores, grouped by scorer
+    all_scores = []
+    for scorer in scorers:
+        try:
+            scores = scorer.score(alignment)
+        except Exception, e:
+            import traceback
+            sys.stderr.write("Error scoring %s via %s\n" %
+                (alignment.align_file, type(scorer).__name__))
+            traceback.print_exc()
+            scores = [None] * len(alignment.msa[0])
+        all_scores.append(scores)
+    # Rearrange to list of scores, grouped by site
+    score_tups = zip(*all_scores)
+    return score_tups
 
 
 def run_experiments(scorers, dataset_name, out_dir, limit=0, section=None):
