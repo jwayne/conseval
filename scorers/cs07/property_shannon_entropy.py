@@ -4,7 +4,7 @@ Code copyright Tony Capra 2007.
 """
 import math
 from scorers.cs07.base import Cs07Scorer
-from utils.bio import aa_to_index, weighted_freq_count_pseudocount, PSEUDOCOUNT
+from conseval.utils.bio import aa_to_index, weighted_freq_count_pseudocount, PSEUDOCOUNT
 
 
 class PropertyShannonEntropy(Cs07Scorer):

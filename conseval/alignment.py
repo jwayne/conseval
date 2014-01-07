@@ -1,11 +1,15 @@
 import random
 import os
 
-from params import Params, ParamDef, WithParams
-from phylotree import get_phylotree, read_phylotree, check_phylotree
-from seqweights import get_seq_weights
-from utils.bio import iupac_alphabet, get_column
+from conseval.params import Params, ParamDef, WithParams
+from conseval.phylotree import get_phylotree, read_phylotree, check_phylotree
+from conseval.seqweights import get_seq_weights
+from conseval.utils.bio import iupac_alphabet, get_column
 
+
+################################################################################
+# Alignment class
+################################################################################
 
 class Alignment(WithParams):
 

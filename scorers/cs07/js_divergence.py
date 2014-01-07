@@ -3,10 +3,10 @@ Jensen-Shannon Divergence (Capra and Singh 07)
 Code by Josh Chen 2013.  Idea from Tony Capra 2007.
 """
 import math
-from params import ParamDef
+from conseval.params import ParamDef
 from scorers.cs07.base import Cs07Scorer
-from substitution import paramdef_bg_distribution
-from utils.bio import weighted_freq_count_pseudocount, PSEUDOCOUNT
+from conseval.substitution import paramdef_bg_distribution
+from conseval.utils.bio import weighted_freq_count_pseudocount, PSEUDOCOUNT
 
 
 class JsDivergence(Cs07Scorer):

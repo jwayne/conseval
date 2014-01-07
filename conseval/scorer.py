@@ -1,14 +1,10 @@
-import numpy as np
-import os
-import sys
 import time
-
-from params import ParamDef, Params, WithParams
-from utils.stats import zscore
+from conseval.params import ParamDef, Params, WithParams
+from conseval.utils.stats import zscore
 
 
 ################################################################################
-# Get a Scorer by name
+# Fetch tools
 ################################################################################
 
 def get_scorer(name, **params):
@@ -32,10 +28,14 @@ def get_scorer_cls(name):
     try:
         scorer_module = __import__('scorers.'+name, fromlist=['x'])
         scorer_clsname = "".join(s.capitalize() for s in name.split('.')[-1].split('_'))
+        if hasattr(scorer_module, 'IS_BASE_SCORER'):
+            if getattr(scorer_module, 'IS_BASE_SCORER'):
+                raise ImportError()
         scorer_cls = getattr(scorer_module, scorer_clsname)
     except (ImportError, AttributeError), e:
         raise ImportError("%s: %s is not a valid scorer." % (e, name))
     return scorer_cls
+
 
 
 ################################################################################
@@ -107,6 +107,12 @@ class Scorer(WithParams):
         """
         raise NotImplementedError()
 
+
+    def set_output_id(self, output_id):
+        self.output_id = output_id
+
+    def set_output_dir(self, out_dir):
+        self.output_dir = out_dir
 
 
 

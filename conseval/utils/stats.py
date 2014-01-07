@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def zscore(x):
     x = np.array(x)
     avg = np.mean(x)

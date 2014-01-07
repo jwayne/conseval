@@ -4,8 +4,8 @@ Code copyright Tony Capra 2007.
 """
 import math
 from scorers.cs07.base import Cs07Scorer
-from substitution import paramdef_bg_distribution
-from utils.bio import aa_to_index, weighted_freq_count_pseudocount, PSEUDOCOUNT
+from conseval.substitution import paramdef_bg_distribution
+from conseval.utils.bio import aa_to_index, weighted_freq_count_pseudocount, PSEUDOCOUNT
 
 
 class PropertyRelativeEntropy(Cs07Scorer):

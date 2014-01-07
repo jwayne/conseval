@@ -4,8 +4,8 @@ Code copyright Tony Capra 2007.
 """
 import numpy as np
 from scorers.cs07.base import Cs07Scorer
-from substitution import paramdef_bg_distribution
-from utils.bio import weighted_freq_count_pseudocount, PSEUDOCOUNT
+from conseval.substitution import paramdef_bg_distribution
+from conseval.utils.bio import weighted_freq_count_pseudocount, PSEUDOCOUNT
 
 
 class RelativeEntropy(Cs07Scorer):

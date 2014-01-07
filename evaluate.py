@@ -31,6 +31,37 @@ def _align_file_iterator(dataset_config, align_files, dataset_dir):
 
 
 ################################################################################
+# Input/output
+################################################################################
+
+def read_evaluate_config(config_file):
+    with open('config.yaml') as f:
+        config_yaml = f.read()
+    config = yaml.load(config_yaml)
+
+    # TODO start
+    # Collect dataset names/parameters in config file
+    datasets = []
+    das = config['datasets']
+    ids = set()
+    for da in das:
+        dataset_id = da['id']
+        if dataset_id in ids:
+            raise ValueError("Duplicate dataset id: %s" % dataset_id)
+        ids.add(dataset_id)
+        dataset_name = da['name']
+        dc_params = {}
+        if 'limit' in da:
+            dc_params['limit'] = da['limit']
+        if 'section' in da:
+            dc_params['section'] = da['section']
+        datasets.append((dataset_id, dataset_name, dc_params))
+    # TODO end
+    return datasets
+
+
+
+################################################################################
 # Cmd line driver
 ################################################################################
 

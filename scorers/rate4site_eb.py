@@ -7,24 +7,24 @@ from __future__ import division
 from collections import defaultdict
 import numpy as np
 
-from params import ParamDef
-from scorers.base import Scorer
-from substitution import paramdef_sub_model
-from utils.bio import aa_to_index, get_column
-from utils.gamma import DiscreteGammaDistribution
+from conseval.params import ParamDef
+from conseval.scorer import Scorer
+from conseval.substitution import paramdef_sub_model
+from conseval.utils.bio import aa_to_index, get_column
+from conseval.utils.gamma import DiscreteGammaDistribution
 
 
 class Rate4siteEb(Scorer):
 
     params = Scorer.params.extend(
-        ParamDef('alpha', 1, float, lambda x: x>=0,
+        ParamDef('alpha', 0, float, lambda x: x>=0,
             help="alpha parameter into the gamma prior on rate r. Var(r) = 1/alpha. If alpha=0 (default), then the empirical Bayesian estimate of alpha is used."),
         ParamDef('K', 16, int, lambda x: x>1,
             help="number of bins to use for the discrete approximation to the gamma distribution"),
         paramdef_sub_model,
     )
 
-    #XXX: How to I set this?
+    #XXX: How should I set this?
     EM_CONVERGENCE = 100
 
 
@@ -49,6 +49,9 @@ class Rate4siteEb(Scorer):
 
         # Fixed alpha
         if self.alpha:
+            return rates
+        # Bad alpha_est (due to all sites having too many gaps)
+        if alpha_est is None:
             return rates
 
         # EM for empirical bayes estimate of alpha
@@ -83,6 +86,7 @@ class Rate4siteEb(Scorer):
             if not node.is_terminal():
                 bfs += node.clades
 
+        # E-step
         rates = []
         rates_for_est = []
         log_marginal = 0
@@ -98,7 +102,12 @@ class Rate4siteEb(Scorer):
                 rates_for_est.append(rate)
                 log_marginal += np.log(marginal)
             rates.append(rate)
-        alpha_est = 1 / np.var(rates_for_est)
+
+        # M-step
+        if len(rates_for_est) <= 1:
+            alpha_est = None
+        else:
+            alpha_est = 1 / np.var(rates_for_est)
 
         return rates, alpha_est, log_marginal
 

@@ -189,13 +189,13 @@ def _parse_testset_ec(test_file, seq):
 DATASET_CONFIGS = {
     'csa': DatasetConfig(
         aln_dir = 'cs07/conservation_alignments/csa_hssp',
-        test_dir = 'cat_sites',
+        test_dir = 'cs07/cat_sites',
         align_to_test = lambda x: x[:-3] + 'cat_sites',
         parse_testset_fn = _parse_testset_csa,
     ),
     'ec': DatasetConfig(
         aln_dir = 'cs07/conservation_alignments/ec_hssp',
-        test_dir = 'lig_distance',
+        test_dir = 'cs07/lig_distance',
         align_to_test = lambda x: os.path.join(os.path.dirname(x), os.path.split(x)[-1][:6]+ '.dist_to_lig'),
         parse_testset_fn = _parse_testset_ec,
     ),

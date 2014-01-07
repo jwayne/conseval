@@ -13,10 +13,10 @@ Code by Josh Chen 2013.
 from __future__ import division
 import numpy as np
 
-from scorers.base import Scorer
+from conseval.scorer import Scorer
 from scorers.cs07.js_divergence import JsDivergence
-from substitution import paramdef_bg_distribution
-from utils.bio import get_column
+from conseval.substitution import paramdef_bg_distribution
+from conseval.utils.bio import get_column
 
 
 class Intrepid(Scorer):

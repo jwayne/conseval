@@ -1,26 +1,20 @@
 #!/usr/bin/python
-import argparse, math, os, sys
-from alignment import Alignment
-from params import parse_params
-from scorers.base import get_scorer
-from utils.bio import get_column
-from utils.general import get_timestamp
+"""
+Score a single alignment using a single scorer.  Print scores in
+a pleasant human-readable format.
+"""
+import argparse
+import sys
+from conseval.alignment import Alignment
+from conseval.io import write_score_helper, read_score_helper, list_scorer_params
+from conseval.params import parse_params
+from conseval.scorer import get_scorer
+from conseval.utils.bio import get_column
 
 
 ################################################################################
 # Input/output
 ################################################################################
-
-def prepare_header(scorers):
-    header = []
-    header.append("# Timestamp: %s" % get_timestamp())
-    for scorer in scorers:
-        header.append("# Scorer: %s" % scorer.name)
-        params = scorer.get_params()
-        for k, v in params:
-            header.append("# \t%s: %s" % (k, v))
-    return "\n".join(header) + "\n"
-
 
 def write_scores(alignment, score_tups, scorer_names, f=sys.stdout, header=None):
     # sanity check
@@ -43,7 +37,7 @@ def write_scores(alignment, score_tups, scorer_names, f=sys.stdout, header=None)
     f.write("# i\tcolumn\t%s\n" % "\t".join(scorer_names))
     for i, score_tup in enumerate(score_tups):
         site = "".join(get_column(i, alignment.msa))
-        f.write("%d\t%s\t%s\n" % (i+1, site, "\t".join(map(_write_score_helper, score_tup))))
+        f.write("%d\t%s\t%s\n" % (i+1, site, "\t".join(map(write_score_helper, score_tup))))
 
 
 def read_scores(fname):
@@ -60,22 +54,8 @@ def read_scores(fname):
             if prevline:
                 scorer_names = prevline.strip().split()[2:]
             prevline = None
-            score_tups.append(map(_read_score_helper, line.split()[2:]))
+            score_tups.append(map(read_score_helper, line.split()[2:]))
     return score_tups
-
-
-def _write_score_helper(score):
-    if isinstance(score, float):
-        return str(round(score,4))
-    elif score is None:
-        return '-'
-    return str(score)
-
-def _read_score_helper(field):
-    if field == '-':
-        return None
-    return float(field)
-
 
 
 
@@ -85,7 +65,7 @@ def _read_score_helper(field):
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Produce conservation scores for an alignment file.")
+        description="Score the conservation of a single alignment file, using a single scorer.")
 
     parser.add_argument('scorer_name',
         help="conservation estimation method")
@@ -117,8 +97,7 @@ def main():
     scores = scorer.score(alignment)
 
     # Output
-    header = prepare_header([scorer])
-    scorer_names = [args.scorer_name]
+    header = list_scorer_params(scorer)
     write_scores(alignment, zip(scores), [args.scorer_name], header=header, f=sys.stdout)
 
 

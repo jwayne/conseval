@@ -3,8 +3,8 @@ Mutation Weighted Pairwise Match
 Code copyright Tony Capra 2007.
 """
 from scorers.cs07.base import Cs07Scorer
-from substitution import paramdef_sim_matrix
-from utils.bio import aa_to_index
+from conseval.substitution import paramdef_sim_matrix
+from conseval.utils.bio import aa_to_index
 
 
 class SumOfPairs(Cs07Scorer):

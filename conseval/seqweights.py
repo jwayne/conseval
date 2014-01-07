@@ -6,7 +6,9 @@ Code by Tony Capra 2007.
 """
 from __future__ import division
 import os
-from utils.bio import amino_acids, aa_to_index
+
+from conseval.utils.bio import amino_acids, aa_to_index
+
 
 #####
 # Conversion tools

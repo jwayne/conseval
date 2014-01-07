@@ -3,9 +3,12 @@ Code largely by Tony Capra 2007.
 """
 from __future__ import division
 
-from params import ParamDef
-from scorers.base import Scorer
-from utils.bio import get_column, weighted_gap_penalty
+from conseval.params import ParamDef
+from conseval.scorer import Scorer
+from conseval.utils.bio import get_column, weighted_gap_penalty
+
+
+IS_BASE_SCORER = 1
 
 
 class Cs07Scorer(Scorer):

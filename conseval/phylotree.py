@@ -1,7 +1,7 @@
-import os
 from Bio import Phylo, SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
+import os
 
 
 #####

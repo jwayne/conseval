@@ -2,8 +2,8 @@ from __future__ import division
 import numpy as np
 import os
 
-from params import ParamDef
-from utils.bio import amino_acids
+from conseval.params import ParamDef
+from conseval.utils.bio import amino_acids
 
 
 N_STATES = 20
