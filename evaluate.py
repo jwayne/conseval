@@ -6,9 +6,14 @@ import sys
 
 from conseval.alignment import Alignment
 from conseval.datasets import DATASET_CONFIGS, OUTPUT_DIR
-from conseval.io import read_score_helper
+from conseval.io import read_batchscores
 from conseval.utils.bio import get_column
 from conseval.utils.general import get_timestamp
+
+
+
+def get_batchscore_dir(dataset_name):
+    return os.path.join(OUTPUT_DIR, "batchscore-%s" % dataset_name)
 
 
 def get_out_dir(evaluator_id=None):
@@ -29,9 +34,9 @@ def get_out_dir(evaluator_id=None):
     return ev_dir
 
 
-def get_batchscores(dataset_name, scorer_ids, limit=0, section=None):
+def get_batchscores(dataset_name, scorer_ids, yield_alignments=True):
     # Sanity check.
-    ds_dir = os.path.join(OUTPUT_DIR, "batchscore-%s" % dataset_name)
+    ds_dir = get_batchscore_dir(dataset_name)
     if not os.path.exists(ds_dir):
         raise IOError("%s for dataset %r does not exist"
                 % (ds_dir, dataset_name))
@@ -42,41 +47,43 @@ def get_batchscores(dataset_name, scorer_ids, limit=0, section=None):
                     % (sc_dir, dataset_name, scorer_id))
 
     dataset_config = DATASET_CONFIGS[dataset_name]
-    align_files = dataset_config.get_align_files(limit, section)
+    align_files = dataset_config.get_align_files()
 
     # Be particular about which alignments we can evaluate.
-    afs = []
-    for align_file in align_files:
-        alignment = Alignment(align_file)
-        n_gapped_cols = 0
-        for i in xrange(len(alignment.msa[0])):
-            col = get_column(i, alignment.msa)
-            if col.count('-') > len(col) / 2:
-                n_gapped_cols += 1
-        if n_gapped_cols > len(alignment.msa[0]) / 2:
-            continue
-        afs.append(align_file)
+    if yield_alignments:
+        afs = []
+        for align_file in align_files:
+            alignment = Alignment(align_file)
+            n_gapped_cols = 0
+            for i in xrange(len(alignment.msa[0])):
+                col = get_column(i, alignment.msa)
+                if col.count('-') > len(col) / 2:
+                    n_gapped_cols += 1
+            if n_gapped_cols > len(alignment.msa[0]) / 2:
+                continue
+            afs.append(align_file)
+    else:
+        afs = align_files
 
     print "Evaluating dataset %r: %d/%d alignments acceptable" \
             % (dataset_name, len(afs), len(align_files))
 
     # Iterate through score files in dataset, per alignment.
     for align_file in afs:
-        alignment = Alignment(align_file,
-                test_file=dataset_config.get_test_file(align_file),
-                parse_testset_fn=dataset_config.parse_testset_fn)
         scores_tup = []
         for scorer_id in scorer_ids:
             sc_dir = os.path.join(ds_dir, scorer_id)
             out_file = dataset_config.get_out_file(align_file, sc_dir)
             scores = read_batchscores(out_file)
             scores_tup.append(scores)
-        yield alignment, scores_tup
+        if yield_alignments:
+            alignment = Alignment(align_file,
+                    test_file=dataset_config.get_test_file(align_file),
+                    parse_testset_fn=dataset_config.parse_testset_fn)
+            yield alignment, scores_tup
+        else:
+            yield align_file, scores_tup
 
-
-def read_batchscores(fname):
-    with open(fname) as f:
-        return map(read_score_helper, f.read().strip().split())
 
 
 ################################################################################

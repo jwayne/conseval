@@ -15,23 +15,23 @@ import numpy as np
 
 from conseval.scorer import Scorer
 from scorers.cs07.js_divergence import JsDivergence
+from conseval.params import ParamDef
 from conseval.substitution import paramdef_bg_distribution
 from conseval.utils.bio import get_column
 
 
 class Intrepid(Scorer):
 
-    params = Scorer.params.with_defaults({
+    params = Scorer.params.extend(
         ParamDef('lambda_pw', .5, float, lambda x: 0<=x<=1,
             help="prior weight lambda_pw in the Jensen-Shannon divergence"),
-        'normalize': True
-    }).extend(paramdef_bg_distribution)
+        paramdef_bg_distribution
+    )
 
     def __init__(self, **params):
         super(Intrepid, self).__init__(**params)
 
         params.update({
-            "bg_distribution": self._bg_distribution,
             "gap_cutoff": 1,
             "use_gap_penalty": False,
             "use_seq_weights": False,

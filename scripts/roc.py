@@ -13,12 +13,10 @@ AUC_LEVELS = [.1, .5, 1]
 
 # it = iterator on (alignment, score_tups)
 
-def roc(dataset_name, scorer_ids, id=None):
+def roc(dataset_name, scorer_ids):
     """
     build roc curve for each alignment, for each scorer
     """
-    out_dir = get_out_dir(id)
-
     scores_cols = [[] for i in scorer_ids]
     test_scores = []
 
@@ -44,6 +42,14 @@ def roc(dataset_name, scorer_ids, id=None):
             auc = np.trapz(tprs[:ind], fprs[:ind])
             scorer_aucs.append(auc)
         scorers_aucs.append(scorer_aucs)
+
+    print ""
+    print "Scorer\t%s" % "\t".join(str(int(aucl*10)) for aucl in AUC_LEVELS)
+    for scorer_id, scorer_auc in zip(scorer_ids, scorers_aucs):
+        line = [scorer_id]
+        for auc in scorer_auc:
+            line.append(str(auc))
+        print "\t".join(line)
 
     pl.clf()
     for fprs, tprs, scorer_name in zip(scorer_fprs, scorer_tprs, scorer_ids):
