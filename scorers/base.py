@@ -50,7 +50,7 @@ class Scorer(WithParams):
 
     # Tunable parameters for scoring.  Children inherit all these parameters
     # along with these defaults.  Defaults can be overridden and parameters
-    # can be extended, see scorers/mayrose04.py for an example.
+    # can be extended, see scorers/rate4site_eb.py for an example.
     params = Params(
         ParamDef('window_size', 0, int, lambda x: x>=0,
             help="Number of residues on either side included in the window"),

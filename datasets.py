@@ -2,8 +2,8 @@ import os
 import random
 
 
-DATA_HOME_DIR = os.path.abspath("data/cs07/")
-OUT_HOME_DIR = os.path.abspath("out/")
+INPUT_DIR = os.path.abspath("input")
+OUTPUT_DIR = os.path.abspath("output")
 
 class DatasetConfig(object):
 
@@ -11,18 +11,18 @@ class DatasetConfig(object):
         """
         @param aln_dir:
             directory containing the aln files for this dataset, relative to
-            `DATA_HOME_DIR`
+            `INPUT_DIR`
         @param test_dir:
             directory containing the test files for this dataset, relative to
-            `DATA_HOME_DIR`
+            `INPUT_DIR`
         @param align_to_test:
             function to convert the aln filename to the test filename. Directories
             are taken care of automatically
         @param parse_testset_fn:
             function of (test_file, args) to parse the test file for this dataset
         """
-        self.aln_dir = os.path.join(DATA_HOME_DIR, aln_dir)
-        self.test_dir = os.path.join(DATA_HOME_DIR, test_dir)
+        self.aln_dir = os.path.join(INPUT_DIR, aln_dir)
+        self.test_dir = os.path.join(INPUT_DIR, test_dir)
         self._align_to_test = align_to_test
         self.parse_testset_fn = parse_testset_fn
 
@@ -188,13 +188,13 @@ def _parse_testset_ec(test_file, seq):
 
 DATASET_CONFIGS = {
     'csa': DatasetConfig(
-        aln_dir = 'conservation_alignments/csa_hssp',
+        aln_dir = 'cs07/conservation_alignments/csa_hssp',
         test_dir = 'cat_sites',
         align_to_test = lambda x: x[:-3] + 'cat_sites',
         parse_testset_fn = _parse_testset_csa,
     ),
     'ec': DatasetConfig(
-        aln_dir = 'conservation_alignments/ec_hssp',
+        aln_dir = 'cs07/conservation_alignments/ec_hssp',
         test_dir = 'lig_distance',
         align_to_test = lambda x: os.path.join(os.path.dirname(x), os.path.split(x)[-1][:6]+ '.dist_to_lig'),
         parse_testset_fn = _parse_testset_ec,

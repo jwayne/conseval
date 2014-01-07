@@ -8,7 +8,7 @@ import sys
 import yaml
 
 from alignment import Alignment
-from datasets import DATASET_CONFIGS, OUT_HOME_DIR
+from datasets import DATASET_CONFIGS, OUTPUT_DIR
 from scorers.base import get_scorer
 from singlerun import compute_scores, prepare_header, write_scores, read_scores
 from utils import parallelize
@@ -147,10 +147,10 @@ def main():
 
     # Make the output directory.
     count = 0
-    batch_dir = os.path.join(OUT_HOME_DIR, "batch-%s-0" % config['id'])
+    batch_dir = os.path.join(OUTPUT_DIR, "batch-%s-0" % config['id'])
     while os.path.exists(batch_dir):
         count += 1
-        batch_dir = os.path.join(OUT_HOME_DIR, "batch-%s-%d" % (config['id'], count))
+        batch_dir = os.path.join(OUTPUT_DIR, "batch-%s-%d" % (config['id'], count))
     os.mkdir(batch_dir)
     sys.stderr.write("Output directory: %s\n" % batch_dir)
 

@@ -14,7 +14,7 @@ from utils.bio import aa_to_index, get_column
 from utils.gamma import DiscreteGammaDistribution
 
 
-class Mayrose04(Scorer):
+class Rate4siteEb(Scorer):
 
     params = Scorer.params.extend(
         ParamDef('alpha', 1, float, lambda x: x>0,
