@@ -1,17 +1,91 @@
 #!/usr/bin/python
 import argparse
+import imp
 import os
 import sys
 
-from alignment import Alignment
-from batchrun import read_config_file, read_config_datasets
-from datasets import DATASET_CONFIGS
-from singlerun import read_scores
+from conseval.alignment import Alignment
+from conseval.datasets import DATASET_CONFIGS, OUTPUT_DIR
+from conseval.io import read_score_helper
+from conseval.utils.bio import get_column
+from conseval.utils.general import get_timestamp
 
+
+def get_out_dir(evaluator_id=None):
+    if not evaluator_id:
+        evaluator_id = get_timestamp()
+    ev_dir = os.path.join(OUTPUT_DIR, "evaluate-%s" % evaluator_id)
+    if os.path.exists(ev_dir):
+        resp = raw_input("%s exists. Overwrite? y/[n]: " % ev_dir)
+        if resp != 'y':
+            sys.exit(0)
+        try:
+            for filename in os.listdir(ev_dir):
+                os.remove(os.path.join(ev_dir, filename))
+            os.rmdir(ev_dir)
+        except OSError:
+            raise OSError("Could not overwrite directory %s" % ev_dir)
+    os.mkdir(ev_dir)
+    return ev_dir
+
+
+def get_batchscores(dataset_name, scorer_ids, limit=0, section=None):
+    # Sanity check.
+    ds_dir = os.path.join(OUTPUT_DIR, "batchscore-%s" % dataset_name)
+    if not os.path.exists(ds_dir):
+        raise IOError("%s for dataset %r does not exist"
+                % (ds_dir, dataset_name))
+    for scorer_id in scorer_ids:
+        sc_dir = os.path.join(ds_dir, scorer_id)
+        if not os.path.exists(sc_dir):
+            raise IOError("%s for dataset %r, scorer %r does not exist"
+                    % (sc_dir, dataset_name, scorer_id))
+
+    dataset_config = DATASET_CONFIGS[dataset_name]
+    align_files = dataset_config.get_align_files(limit, section)
+
+    # Be particular about which alignments we can evaluate.
+    afs = []
+    for align_file in align_files:
+        alignment = Alignment(align_file)
+        n_gapped_cols = 0
+        for i in xrange(len(alignment.msa[0])):
+            col = get_column(i, alignment.msa)
+            if col.count('-') > len(col) / 2:
+                n_gapped_cols += 1
+        if n_gapped_cols > len(alignment.msa[0]) / 2:
+            continue
+        afs.append(align_file)
+
+    print "Evaluating dataset %r: %d/%d alignments acceptable" \
+            % (dataset_name, len(afs), len(align_files))
+
+    # Iterate through score files in dataset, per alignment.
+    for align_file in afs:
+        alignment = Alignment(align_file,
+                test_file=dataset_config.get_test_file(align_file),
+                parse_testset_fn=dataset_config.parse_testset_fn)
+        scores_tup = []
+        for scorer_id in scorer_ids:
+            sc_dir = os.path.join(ds_dir, scorer_id)
+            out_file = dataset_config.get_out_file(align_file, sc_dir)
+            scores = read_batchscores(out_file)
+            scores_tup.append(scores)
+        yield alignment, scores_tup
+
+
+def read_batchscores(fname):
+    with open(fname) as f:
+        return map(read_score_helper, f.read().strip().split())
+
+
+################################################################################
+# Cmd line driver
+################################################################################
 
 def get_evaluator(name):
     try:
-        ev_module = __import__('evaluators.'+name, fromlist=['x'])
+        ev_module = imp.load_source(name, os.path.join('scripts', '%s.py' % name))
         fn_name = name.split('.')[-1]
         fn = getattr(ev_module, fn_name)
     except (ImportError, AttributeError), e:
@@ -19,78 +93,23 @@ def get_evaluator(name):
     return fn
 
 
-def _align_file_iterator(dataset_config, align_files, dataset_dir):
-    for align_file in align_files:
-        test_file = dataset_config.get_test_file(align_file)
-        out_file = dataset_config.get_out_file(align_file, dataset_dir)
-        alignment = Alignment(align_file, test_file=test_file,
-                parse_testset_fn=dataset_config.parse_testset_fn)
-        score_tups = read_scores(out_file)
-        yield (alignment, score_tups)   
-
-
-
-################################################################################
-# Input/output
-################################################################################
-
-def read_evaluate_config(config_file):
-    with open('config.yaml') as f:
-        config_yaml = f.read()
-    config = yaml.load(config_yaml)
-
-    # TODO start
-    # Collect dataset names/parameters in config file
-    datasets = []
-    das = config['datasets']
-    ids = set()
-    for da in das:
-        dataset_id = da['id']
-        if dataset_id in ids:
-            raise ValueError("Duplicate dataset id: %s" % dataset_id)
-        ids.add(dataset_id)
-        dataset_name = da['name']
-        dc_params = {}
-        if 'limit' in da:
-            dc_params['limit'] = da['limit']
-        if 'section' in da:
-            dc_params['section'] = da['section']
-        datasets.append((dataset_id, dataset_name, dc_params))
-    # TODO end
-    return datasets
-
-
-
-################################################################################
-# Cmd line driver
-################################################################################
-
 def main():
     parser = argparse.ArgumentParser(
         description="Run evaluators of scoring methods using the output from batch running the scorers on a dataset(s)")
 
     parser.add_argument('evaluator_name',
         help="name of evaluator")
-    parser.add_argument('batch_output_dir',
-        help="directory containing scores, i.e. output directory from batch running scorers")
+    parser.add_argument('dataset_name',
+        help="name of dataset")
+    parser.add_argument('scorer_ids', nargs='+',
+        help="ids of batchscores to evaluate")
 
     args = parser.parse_args()
 
     ev_name = args.evaluator_name
     ev_fn = get_evaluator(ev_name)
-    batch_dir = os.path.abspath(args.batch_output_dir)
 
-    config_file = os.path.join(batch_dir, 'config.yaml')
-    config = read_config_file(config_file)
-    datasets = read_config_datasets(config)
-    scorer_names = [sc['id'] for sc in config['scorers']]
-
-    for dataset_id, dataset_name, dc_params in datasets:
-        dataset_dir = os.path.join(batch_dir, dataset_id)
-        dc = DATASET_CONFIGS[dataset_name]
-        align_files = dc.get_align_files(**dc_params)
-        it = _align_file_iterator(dc, align_files, dataset_dir)
-        ev_fn(it, scorer_names, batch_dir)
+    ev_fn(args.dataset_name, args.scorer_ids)
 
 
 if __name__ == "__main__":

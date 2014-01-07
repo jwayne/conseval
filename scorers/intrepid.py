@@ -22,20 +22,22 @@ from conseval.utils.bio import get_column
 class Intrepid(Scorer):
 
     params = Scorer.params.with_defaults({
+        ParamDef('lambda_pw', .5, float, lambda x: 0<=x<=1,
+            help="prior weight lambda_pw in the Jensen-Shannon divergence"),
         'normalize': True
     }).extend(paramdef_bg_distribution)
 
     def __init__(self, **params):
         super(Intrepid, self).__init__(**params)
 
-        params = {
+        params.update({
             "bg_distribution": self._bg_distribution,
             "gap_cutoff": 1,
             "use_gap_penalty": False,
             "use_seq_weights": False,
             "window_size": 0,
             "normalize": False,
-        }
+        })
         self.subscorer = JsDivergence(**params)
 
 

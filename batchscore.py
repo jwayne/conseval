@@ -12,7 +12,7 @@ import yaml
 
 from conseval.alignment import Alignment
 from conseval.datasets import DATASET_CONFIGS, OUTPUT_DIR
-from conseval.io import write_score_helper, read_score_helper, list_scorer_params
+from conseval.io import write_score_helper, list_scorer_params
 from conseval.scorer import get_scorer
 from conseval.utils import parallelize
 
@@ -51,8 +51,8 @@ def read_batchscore_config(config_file):
     return datasets, scorers
 
 
-def write_scores(scores, f):
-    f.write("\n".join(map(write_score_helper,scores)))
+def write_batchscores(scores, f):
+    f.write("\n".join(map(write_score_helper, scores)))
 
 
 
@@ -136,7 +136,7 @@ def run_experiment_helper(dataset_config, scorers):
             # Write scores.
             out_file = dataset_config.get_out_file(align_file, scorer.output_dir)
             with open(out_file, 'w') as f:
-                write_scores(scores, f)
+                write_batchscores(scores, f)
         return True
     return run_experiment
 
@@ -177,7 +177,7 @@ def main():
 
     # Perform the scoring
     for ds_name in dataset_names:
-        ds_dir = os.path.join(OUTPUT_DIR, ds_name)
+        ds_dir = os.path.join(OUTPUT_DIR, "batchscore-%s" % ds_name)
         for scorer in scorers:
             sc_dir = os.path.join(ds_dir, scorer.output_id)
             os.mkdir(sc_dir)

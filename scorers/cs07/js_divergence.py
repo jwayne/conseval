@@ -12,8 +12,8 @@ from conseval.utils.bio import weighted_freq_count_pseudocount, PSEUDOCOUNT
 class JsDivergence(Cs07Scorer):
 
     params = Cs07Scorer.params.extend(
-        ParamDef('prior_weight', .5, float, lambda x: 0<=x<=1,
-            help="prior weight lambda in the Jensen-Shannon divergence"),
+        ParamDef('lambda_pw', .5, float, lambda x: 0<=x<=1,
+            help="prior weight lambda_pw in the Jensen-Shannon divergence"),
         paramdef_bg_distribution
     )
 
@@ -26,8 +26,8 @@ class JsDivergence(Cs07Scorer):
         distribution q.
         """
         q = self.bg_distribution
-        lamb1 = self.prior_weight
-        lamb2 = 1-self.prior_weight
+        lamb1 = self.lambda_pw
+        lamb2 = 1-self.lambda_pw
 
         # get frequency distribution
         with_gap = (len(q) == 21)

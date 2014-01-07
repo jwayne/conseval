@@ -4,7 +4,8 @@ import numpy as np
 import pylab as pl
 from sklearn.metrics import roc_curve
 
-from utils.stats import zscore
+from evaluate import get_batchscores, get_out_dir
+from conseval.utils.stats import zscore
 
 
 AUC_LEVELS = [.1, .5, 1]
@@ -12,27 +13,25 @@ AUC_LEVELS = [.1, .5, 1]
 
 # it = iterator on (alignment, score_tups)
 
-def roc(it, scorer_names, out_dir):
+def roc(dataset_name, scorer_ids, id=None):
     """
     build roc curve for each alignment, for each scorer
     """
-    scorers_scores = []
-    for i in scorer_names:
-        scorers_scores.append([])
+    out_dir = get_out_dir(id)
+
+    scores_cols = [[] for i in scorer_ids]
     test_scores = []
 
     # Just aggregate all scores across all data files.  It isn't much memory anyway.
-    count = 0
-    for alignment, score_tups in it:
-        scores_cols = zip(*score_tups)
-        for scorer_scores, scores in zip(scorers_scores, scores_cols):
-            scorer_scores += scores
+    for alignment, scores_tup in get_batchscores(dataset_name, scorer_ids):
+        for scores_col, scores in zip(scores_cols, scores_tup):
+            scores_col += scores
         test_scores += alignment.testset
 
     scorer_fprs = []
     scorer_tprs = []
-    for scorer_scores in scorers_scores:
-        fprs, tprs, _ = roc_curve(test_scores, scorer_scores, pos_label=1)
+    for scores_col in scores_cols:
+        fprs, tprs, _ = roc_curve(test_scores, scores_col, pos_label=1)
         scorer_fprs.append(fprs)
         scorer_tprs.append(tprs)
 
@@ -47,7 +46,7 @@ def roc(it, scorer_names, out_dir):
         scorers_aucs.append(scorer_aucs)
 
     pl.clf()
-    for fprs, tprs, scorer_name in zip(scorer_fprs, scorer_tprs, scorer_names):
+    for fprs, tprs, scorer_name in zip(scorer_fprs, scorer_tprs, scorer_ids):
         pl.plot(fprs, tprs, label=scorer_name)
     pl.plot([0,1],[0,1],'k--')
     pl.xlim([0,1])
@@ -57,4 +56,4 @@ def roc(it, scorer_names, out_dir):
     pl.title('ROC curves')
     pl.legend(loc="lower right")
     pl.show()
-    #pl.savefig(fname)
+    #l.savefig(fname)
