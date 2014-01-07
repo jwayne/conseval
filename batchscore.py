@@ -159,11 +159,11 @@ def main():
 
     # Sanity check the output dirs
     for ds_name in dataset_names:
-        ds_dir = os.path.join(OUTPUT_DIR, ds_name)
+        ds_dir = os.path.join(OUTPUT_DIR, "batchscore-%s" % ds_name)
         if not os.path.exists(ds_dir):
             os.mkdir(ds_dir)
         for scorer in scorers:
-            sc_dir = os.path.join(ds_dir, "batchscore-%s" % scorer.output_id)
+            sc_dir = os.path.join(ds_dir, scorer.output_id)
             if os.path.exists(sc_dir):
                 resp = raw_input("%s exists. Overwrite? y/[n]: " % sc_dir)
                 if resp != 'y':
@@ -179,9 +179,9 @@ def main():
     for ds_name in dataset_names:
         ds_dir = os.path.join(OUTPUT_DIR, ds_name)
         for scorer in scorers:
-            sc_dir = os.path.join(ds_dir, "batchscore-%s" % scorer.output_id)
+            sc_dir = os.path.join(ds_dir, scorer.output_id)
             os.mkdir(sc_dir)
-            params_file = os.path.join(ds_dir, "batchscore-%s.params" % scorer.output_id)
+            params_file = os.path.join(ds_dir, "%s.params" % scorer.output_id)
             with open(params_file, 'w') as f:
                 f.write(list_scorer_params(scorer))
             scorer.set_output_dir(sc_dir)

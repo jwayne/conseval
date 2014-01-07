@@ -5,6 +5,7 @@ from scipy.special import gammainc, gammaincinv
 
 class DiscreteGammaDistribution(object):
 
+    # This is actually needed so that gammaincinv doesn't give inf
     MAX_RATE = 20
 
     def __init__(self, alpha, beta, K):
@@ -13,36 +14,25 @@ class DiscreteGammaDistribution(object):
         if beta <= 0:
             raise Exception("beta = %f <= 0" % beta)
         if K < 1:
-            raise Exception("Too few bins")
+            raise Exception("Too few categories")
 
-        self.alpha = alpha
-        self.beta = beta
-        self.K = K
+        # find upper boundaries of each category
+        max_prob = gammainc(alpha, self.MAX_RATE)
+        bin_prob = max_prob / K
+        targets = np.arange(bin_prob, max_prob+bin_prob/2, bin_prob)
+        #XXX: not sure why we don't divide targets / beta
+        cat_ubounds = gammaincinv(alpha, targets) / beta
 
-        # bin only between [0, MAX_RATE]
-        # XXX: this doesn't really seem necessary, since in going from
-        # 1 to cum_prob we're really not changing the bin_mids by that much...
-        cum_prob = beta * gammainc(alpha, beta*self.MAX_RATE)
-        bin_prob = cum_prob / K
+        cat_lbounds = np.zeros(K)
+        cat_lbounds[1:] = cat_ubounds[:-1]
+        tmp = gammainc(alpha+1, cat_ubounds * beta) - gammainc(alpha+1, cat_lbounds * beta)
+        cat_rates = tmp * alpha / beta * K
 
-        # find expected value of each bin
-        # rate4site does this in a weird way that gives slightly different
-        # results.  For their implementation, see:
-        #   gammaUtilities::the_avarage_r_in_category_between_a_and_b
-        #   generalGammaDistribution::fill_mean
-        targets = np.arange(bin_prob/2, cum_prob, bin_prob)
-        bin_mids = gammaincinv(alpha, targets/beta) / beta
-
-        # Rate of middle of each bin
-        self.bin_rates = bin_mids
-        # Probability mass of each bin
-        self.bin_probs = np.zeros(K) + bin_prob
+        # Rate of middle of each category
+        self.cat_rates = cat_rates
+        # Probability mass of each category
+        self.cat_probs = np.zeros(K) + bin_prob
 
 
     def get_rates(self):
-        """
-        Get the expected values of each bin.
-        Note that each bin has the same probability mass, as dictated by
-        the discrete gamma model (see Susko 2002)
-        """
-        return self.bin_rates
+        return self.cat_rates
