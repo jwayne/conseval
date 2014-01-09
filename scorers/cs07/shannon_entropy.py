@@ -29,7 +29,7 @@ class ShannonEntropy(Cs07Scorer):
         # Convert score so that it's between 0 and 1.
         # Recall that shannon entropy is between 0 and log(number of values with nonzero freq)
         # XXX: Why involve len(col) if we have a pseudocount?
-        h /= math.log(min(len(fc), len(col)))
+        h /= math.log(len(fc))#math.log(min(len(fc), len(col)))
 
         # Convert score so that 1 is conserved, and 0 is not.
         return 1 - h

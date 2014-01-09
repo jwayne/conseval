@@ -14,18 +14,22 @@ from conseval.utils.bio import aa_to_index, get_column
 from conseval.utils.gamma import DiscreteGammaDistribution
 
 
+# This is to avoid spurious discrete gamma distributions.
+MAX_ALPHA = 40
+
+#XXX: How should I set this?
+EM_CONVERGENCE = 100
+
+
 class Rate4siteEb(Scorer):
 
     params = Scorer.params.extend(
-        ParamDef('alpha', 0, float, lambda x: x>=0,
+        ParamDef('alpha', 0, float, lambda x: 0<=x<MAX_ALPHA,
             help="alpha parameter into the gamma prior on rate r. Var(r) = 1/alpha. If alpha=0 (default), then the empirical Bayesian estimate of alpha is used."),
         ParamDef('K', 16, int, lambda x: x>1,
             help="number of bins to use for the discrete approximation to the gamma distribution"),
         paramdef_sub_model,
     )
-
-    #XXX: How should I set this?
-    EM_CONVERGENCE = 100
 
 
     def __init__(self, **params):
@@ -43,26 +47,31 @@ class Rate4siteEb(Scorer):
 
 
     def _score(self, alignment):
+        # Silly check; return mean if there aren't enough sequences in the
+        # alignment to return reasonable scores.
+        if len(alignment.msa) <= 2:
+            return [1] * len(alignment.msa[0])
+
         names_map = dict((name, i) for i, name in enumerate(alignment.names))
         rates, alpha_est, log_marginal = self._score_fixed_alpha(
                 alignment, names_map, self.dgd)
 
-        # Fixed alpha
-        if self.alpha:
-            return rates
-        # Bad alpha_est (due to all sites having too many gaps)
-        if alpha_est is None:
-            return rates
-
         # EM for empirical bayes estimate of alpha
-        prev_log_marginal = None
-        while not prev_log_marginal or \
-                    abs(log_marginal-prev_log_marginal) > self.EM_CONVERGENCE:
-            prev_log_marginal = log_marginal
-            dgd = DiscreteGammaDistribution(alpha_est, alpha_est, self.K)
-            rates, alpha_est, log_marginal = self._score_fixed_alpha(
-                    alignment, names_map, dgd)
-        return rates
+        if not self.alpha:
+            prev_log_marginal = None
+            # Perform empirical Bayes estimation of alpha unless we have a
+            # fixed alpha or the alpha_est returned was spurious.
+            while alpha_est is not None and alpha_est <= MAX_ALPHA and \
+                    (not prev_log_marginal or \
+                        abs(log_marginal-prev_log_marginal) > EM_CONVERGENCE):
+                prev_log_marginal = log_marginal
+                dgd = DiscreteGammaDistribution(alpha_est, alpha_est, self.K)
+                rates, alpha_est, log_marginal = self._score_fixed_alpha(
+                        alignment, names_map, dgd)
+
+        # negate the rates so higher scores are conserved, just like all the
+        # other scorers
+        return [-r for r in rates]
 
 
     def _score_fixed_alpha(self, alignment, names_map, dgd):
@@ -72,7 +81,7 @@ class Rate4siteEb(Scorer):
         # This can be done because the discrete gamma distribution tells us
         # which rates P(rt) will be computed for when scoring columns.
         P_cached = defaultdict(dict)
-        root = tree.clade
+        root = tree.root
         bfs = [root]
         for node in bfs:
             for rate in dgd.get_rates():
@@ -120,7 +129,7 @@ class Rate4siteEb(Scorer):
         Assume a fixed alpha until I get it working (leave the inference of the
         hyperparameter until later).
         """
-        root = tree.clade
+        root = tree.root
 
         # Numerator \sum_r( r*P(X,r) )
         top = 0

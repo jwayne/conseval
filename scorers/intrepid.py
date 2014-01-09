@@ -15,32 +15,43 @@ import numpy as np
 
 from conseval.scorer import Scorer, get_scorer_cls
 from conseval.params import ParamDef
-from conseval.substitution import paramdef_bg_distribution
+from conseval.substitution import paramdef_bg_distribution, paramdef_sub_model
 from conseval.utils.bio import get_column
 
 
 class Intrepid(Scorer):
 
     params = Scorer.params.extend(
+        #TODO: clean_fxn shouldn't allow bad subscorer names
         ParamDef('subscorer_cls', 'cs07.js_divergence', load_fxn=get_scorer_cls,
-            help="sub scorer"),
-        # yuck
+            help="subscorer"),
+        ParamDef('normalize_subscores', False, bool,
+            help="normalize scores of subscorer for each "),
+
+        #TODO: don't define these here.  not sure how else to do it though
         ParamDef('lambda_pw', .5, float, lambda x: 0<=x<=1,
             help="prior weight lambda_pw in the Jensen-Shannon divergence"),
-        # yuck
-        paramdef_bg_distribution
+        paramdef_bg_distribution,
+        paramdef_sub_model,
     )
 
     def __init__(self, **params):
         super(Intrepid, self).__init__(**params)
 
+        subscorer_param_names = set(p.name for p in self.subscorer_cls.params.param_defs)
         # yuck
+        for k in params.keys():
+            if k not in subscorer_param_names:
+                del params[k]
+        if 'gap_cutoff' in subscorer_param_names:
+            params['gap_cutoff'] = 1
+        if 'use_gap_penalty' in subscorer_param_names:
+            params['use_gap_penalty'] = False
+        if 'use_seq_weights' in subscorer_param_names:
+            params['use_seq_weights'] = False
         params.update({
-            "gap_cutoff": 1,
-            "use_gap_penalty": False,
-            "use_seq_weights": False,
             "window_size": 0,
-            "normalize": False,
+            "normalize": self.normalize_subscores,
         })
         self.subscorer = self.subscorer_cls(**params)
 
@@ -75,8 +86,8 @@ class Intrepid(Scorer):
                 x=alignment.get_seq_weights()
                 return [x[i] for i in inds]
             aln = MockAlignment(names, msa, tree, get_seq_weights)
-            subtree_scores.append(self.subscorer._score(aln))
-        subtree_scores.append(self.subscorer._score(alignment))
+            subtree_scores.append(self.subscorer.score(aln))
+        subtree_scores.append(self.subscorer.score(alignment))
 
         site_scores = np.array(subtree_scores).T
         site_avgscores = np.mean(site_scores,0)
@@ -85,13 +96,15 @@ class Intrepid(Scorer):
         return scores
 
 
-class MockAlignment():
 
+class MockAlignment():
+    """
+    For sending to Intrepid.subscorer._score(alignment)
+    """
     def __init__(self, names, msa, tree, get_seq_weights):
         self.names = names
         self.msa = msa
         self.tree = tree
         self.get_seq_weights = get_seq_weights
-
     def get_phylotree(self):
         return self.tree

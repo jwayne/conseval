@@ -92,7 +92,6 @@ class Scorer(WithParams):
             scores = list(zscore(scores))
 
         dt = time.time() - t0 #len(alignment.msa), len(alignment.msa[0])
-        print "# Time: %f" % dt
         return scores
 
 

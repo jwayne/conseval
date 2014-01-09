@@ -7,7 +7,7 @@ OUTPUT_DIR = os.path.abspath("output")
 
 class DatasetConfig(object):
 
-    def __init__(self, aln_dir, test_dir, align_to_test, parse_testset_fn):
+    def __init__(self, aln_dir, test_dir, align_to_test_fn, parse_testset_fn):
         """
         @param aln_dir:
             directory containing the aln files for this dataset, relative to
@@ -15,7 +15,7 @@ class DatasetConfig(object):
         @param test_dir:
             directory containing the test files for this dataset, relative to
             `INPUT_DIR`
-        @param align_to_test:
+        @param align_to_test_fn:
             function to convert the aln filename to the test filename. Directories
             are taken care of automatically
         @param parse_testset_fn:
@@ -24,7 +24,7 @@ class DatasetConfig(object):
         """
         self.aln_dir = os.path.join(INPUT_DIR, aln_dir)
         self.test_dir = os.path.join(INPUT_DIR, test_dir)
-        self._align_to_test = align_to_test
+        self._align_to_test_fn = align_to_test_fn
         self.parse_testset_fn = parse_testset_fn
 
     def get_align_files(self, limit=0, section=None):
@@ -58,7 +58,7 @@ class DatasetConfig(object):
 
     def get_test_file(self, align_file):
         return os.path.join(self.test_dir,
-                self._align_to_test(align_file[len(self.aln_dir)+1:]))
+                self._align_to_test_fn(align_file[len(self.aln_dir)+1:]))
 
     def get_out_file(self, align_file, out_dir, ext='.res'):
         out_name = ".".join(align_file[len(self.aln_dir)+1:].replace('/', '___').split('.')[:-1])
@@ -191,13 +191,13 @@ DATASET_CONFIGS = {
     'csa': DatasetConfig(
         aln_dir = 'cs07/conservation_alignments/csa_hssp',
         test_dir = 'cs07/cat_sites',
-        align_to_test = lambda x: x[:-3] + 'cat_sites',
+        align_to_test_fn = lambda x: x[:-3] + 'cat_sites',
         parse_testset_fn = _parse_testset_csa,
     ),
     'ec': DatasetConfig(
         aln_dir = 'cs07/conservation_alignments/ec_hssp',
         test_dir = 'cs07/lig_distance',
-        align_to_test = lambda x: os.path.join(os.path.dirname(x), os.path.split(x)[-1][:6]+ '.dist_to_lig'),
+        align_to_test_fn = lambda x: os.path.join(os.path.dirname(x), os.path.split(x)[-1][:6]+ '.dist_to_lig'),
         parse_testset_fn = _parse_testset_ec,
     ),
 }

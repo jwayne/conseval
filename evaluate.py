@@ -34,7 +34,7 @@ def get_out_dir(evaluator_id=None):
     return ev_dir
 
 
-def get_batchscores(dataset_name, scorer_ids, yield_alignments=True):
+def get_batchscores(dataset_name, scorer_ids=[]):
     # Sanity check.
     ds_dir = get_batchscore_dir(dataset_name)
     if not os.path.exists(ds_dir):
@@ -50,22 +50,27 @@ def get_batchscores(dataset_name, scorer_ids, yield_alignments=True):
     align_files = dataset_config.get_align_files()
 
     # Be particular about which alignments we can evaluate.
-    if yield_alignments:
-        afs = []
-        for align_file in align_files:
-            alignment = Alignment(align_file)
-            n_gapped_cols = 0
-            for i in xrange(len(alignment.msa[0])):
-                col = get_column(i, alignment.msa)
-                if col.count('-') > len(col) / 2:
-                    n_gapped_cols += 1
-            if n_gapped_cols > len(alignment.msa[0]) / 2:
-                continue
+    afs = []
+    for align_file in align_files:
+        alignment = Alignment(align_file)
+        n_gapped_cols = 0
+        for i in xrange(len(alignment.msa[0])):
+            col = get_column(i, alignment.msa)
+            if col.count('-') > len(col) / 2:
+                n_gapped_cols += 1
+        if n_gapped_cols > len(alignment.msa[0]) / 2:
+            continue
+        include = True
+        for scorer_id in scorer_ids:
+            sc_dir = os.path.join(ds_dir, scorer_id)
+            out_file = dataset_config.get_out_file(align_file, sc_dir)
+            if not os.path.exists(out_file):
+                include = False
+                break
+        if include:
             afs.append(align_file)
-    else:
-        afs = align_files
 
-    print "Evaluating dataset %r: %d/%d alignments acceptable" \
+    print "Evaluating dataset %r: %d/%d scored alignments after minor filtering" \
             % (dataset_name, len(afs), len(align_files))
 
     # Iterate through score files in dataset, per alignment.
@@ -76,13 +81,10 @@ def get_batchscores(dataset_name, scorer_ids, yield_alignments=True):
             out_file = dataset_config.get_out_file(align_file, sc_dir)
             scores = read_batchscores(out_file)
             scores_tup.append(scores)
-        if yield_alignments:
-            alignment = Alignment(align_file,
-                    test_file=dataset_config.get_test_file(align_file),
-                    parse_testset_fn=dataset_config.parse_testset_fn)
-            yield alignment, scores_tup
-        else:
-            yield align_file, scores_tup
+        alignment = Alignment(align_file,
+                test_file=dataset_config.get_test_file(align_file),
+                parse_testset_fn=dataset_config.parse_testset_fn)
+        yield alignment, scores_tup
 
 
 
@@ -92,7 +94,7 @@ def get_batchscores(dataset_name, scorer_ids, yield_alignments=True):
 
 def get_evaluator(name):
     try:
-        ev_module = imp.load_source(name, os.path.join('scripts', '%s.py' % name))
+        ev_module = imp.load_source(name, os.path.join('evaluators', '%s.py' % name))
         fn_name = name.split('.')[-1]
         fn = getattr(ev_module, fn_name)
     except (ImportError, AttributeError), e:
