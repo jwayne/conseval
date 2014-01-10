@@ -37,8 +37,6 @@ def pr_roc(dataset_name, *scorer_ids):
             scores_col += [scores[i] for i in xrange(len(ts)) if ts[i] is not None]
         test_scores += [ts[i] for i in xrange(len(ts)) if ts[i] is not None]
 
-    print test_scores.count(1) / len(test_scores)
-
     scorer_fprs = []
     scorer_tprs = []
     scorer_precisions = []
@@ -56,14 +54,20 @@ def pr_roc(dataset_name, *scorer_ids):
 
     plot_pr(dataset_name, scorer_precisions, scorer_recalls, scorer_ids)
     plot_roc(dataset_name, scorer_fprs, scorer_tprs, scorer_ids, .5, None)
-
     plt.show(block=False)
 
+    print """\n* To plot another PR curve:
+plot_pr(dataset_name, scorer_precisions, scorer_recalls, scorer_ids, legend='upper right')
+plt.show()"""
+    print """\n* To plot another ROC curve:
+plot_roc(dataset_name, scorer_fprs, scorer_tprs, scorer_ids, x_max=.5, legend='lower right')
+plt.show()"""
+    print ""
     import ipdb
     ipdb.set_trace()
 
 
-def plot_pr(name, scorer_precisions, scorer_recalls, scorer_ids, legend='upper right'):
+def plot_pr(name, scorer_precisions, scorer_recalls, scorer_ids, legend='upper right', ):
     fig = plt.figure()
     y_max = 0
     for ps, rs, id in zip(scorer_precisions, scorer_recalls, scorer_ids):
@@ -79,34 +83,22 @@ def plot_pr(name, scorer_precisions, scorer_recalls, scorer_ids, legend='upper r
     return fig
 
 
-def plot_roc(name, scorer_fprs, scorer_tprs, scorer_ids, x_max, y_min, legend='lower right'):
-    if x_max and y_min:
-        raise Exception()
-
+def plot_roc(name, scorer_fprs, scorer_tprs, scorer_ids, x_max=1, legend='lower right'):
     fig = plt.figure()
 
-    x_min = 1
     y_max = 0
     for fprs, tprs, scorer_id in zip(scorer_fprs, scorer_tprs, scorer_ids):
-        if x_max:
+        if x_max != 1:
             ind = bisect.bisect(fprs, x_max)
             fprs = fprs[:ind+1]
             tprs = tprs[:ind+1]
             y_max = max(y_max, tprs[-1])
-        elif y_min:
-            ind = bisect.bisect(tprs, y_min)
-            fprs = fprs[ind:]
-            tprs = tprs[ind:]
-            x_min = min(x_min, fprs[0])
         plt.plot(fprs, tprs, label=scorer_id)
     plt.plot([0,1],[0,1],'k--')
 
-    if x_max:
+    if x_max != 1:
         x_rg = [0,x_max]
         y_rg = [0,y_max]
-    elif y_min:
-        x_rg = [x_min,1]
-        y_rg = [y_min,1]
     else:
         x_rg = y_rg = [0,1]
     plt.xlim(x_rg)
