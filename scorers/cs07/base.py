@@ -14,7 +14,7 @@ IS_BASE_SCORER = 1
 class Cs07Scorer(Scorer):
 
     params = Scorer.params.with_defaults({
-        'window_size': 3,
+        'window_size': 1,
     }).extend(
         ParamDef('gap_cutoff', .3, float, lambda x: 0<=x<=1,
             help="maximum allowed fraction of gaps per column; columns > this won't be scored"),

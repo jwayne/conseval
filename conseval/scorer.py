@@ -1,3 +1,4 @@
+from __future__ import division
 import time
 from conseval.params import ParamDef, Params, WithParams
 from conseval.utils.stats import zscore
@@ -86,8 +87,7 @@ class Scorer(WithParams):
         scores = self._score(alignment)
 
         if self.window_size:
-            scores = window_score(scores, self.window_size,
-                    self.window_lambda)
+            scores = window_score(scores, self.window_size, self.window_lambda)
         if self.normalize:
             scores = list(zscore(scores))
 
@@ -120,30 +120,26 @@ class Scorer(WithParams):
 # Score adjustments
 ################################################################################
 
-def window_score(scores, window_len, lam=.5):
+def window_score(scores, window_size, lam=.5):
     """
     This function takes a list of scores and a length and transforms them
     so that each position is a weighted average of the surrounding positions.
     Positions with scores less than zero are not changed and are ignored in the
-    calculation. Here window_len is interpreted to mean window_len residues on
+    calculation. Here window_size is interpreted to mean window_size residues on
     either side of the current residue.
     
     Code by Tony Capra 2007.
     """
     w_scores = scores[:]
-
-    for i in xrange(window_len, len(scores) - window_len):
-        if scores[i] < 0:
+    for i in xrange(window_size, len(scores)-window_size):
+        if scores[i] is None:
             continue
-
         curr_sum = 0.
-        num_terms = 0.
-        for j in xrange(i - window_len, i + window_len + 1):
-            if i != j and scores[j] >= 0:
-                num_terms += 1
+        num_terms = 0
+        for j in xrange(i-window_size, i+window_size+1):
+            if i != j and scores[j] is not None:
                 curr_sum += scores[j]
-
-        if num_terms > 0:
-            w_scores[i] = (1 - lam) * (curr_sum / num_terms) + lam * scores[i]
-
+                num_terms += 1
+        if num_terms:
+            w_scores[i] = (1-lam) * (curr_sum/num_terms) + lam * scores[i]
     return w_scores

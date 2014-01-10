@@ -5,5 +5,5 @@
 *.pkl
 *.res
 *.out
-out
-data
+input
+output

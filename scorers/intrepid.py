@@ -29,8 +29,8 @@ class Intrepid(Scorer):
             help="normalize scores of subscorer for each "),
 
         #TODO: don't define these here.  not sure how else to do it though
-        ParamDef('lambda_pw', .5, float, lambda x: 0<=x<=1,
-            help="prior weight lambda_pw in the Jensen-Shannon divergence"),
+        ParamDef('lambda_prior', .5, float, lambda x: 0<=x<=1,
+            help="prior weight lambda_prior in the Jensen-Shannon divergence"),
         paramdef_bg_distribution,
         paramdef_sub_model,
     )

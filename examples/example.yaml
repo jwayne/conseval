@@ -1,0 +1,11 @@
+datasets:
+    - csa
+    - ec
+scorers:
+    - id: jsd-example2
+      name: cs07.js_divergence
+      # no params
+    - id: jsd-example
+      name: cs07.js_divergence
+      params:
+        lambda_pw: .1

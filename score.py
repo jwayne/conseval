@@ -8,8 +8,10 @@ import sys
 from conseval.alignment import Alignment
 from conseval.io import write_score_helper, read_score_helper, list_scorer_params
 from conseval.params import parse_params
-from conseval.scorer import get_scorer
+from conseval.scorer import get_scorer, get_scorer_cls
 from conseval.utils.bio import get_column
+from conseval.utils.general import get_all_module_names
+
 
 
 ################################################################################
@@ -58,6 +60,28 @@ def read_scores(fname):
     return score_tups
 
 
+def list_alignment_paramdefs():
+    print "================"
+    print "Alignment params:"
+    print "================"
+    print "\n".join("    %s" % pd for pd in Alignment.params.param_defs)
+    print ""
+
+
+def list_scorer_paramdefs(scorer_name=None):
+    if scorer_name:
+        scorer_names = [scorer_name]
+    else:
+        scorer_names = get_all_module_names('scorers')
+    for scorer_name in scorer_names:
+        scorer_cls = get_scorer_cls(scorer_name)
+        x = "Scorer params for %s:" % scorer_name
+        print ("="*len(x))
+        print x
+        print ("="*len(x))
+        print "\n".join("    %s" % pd for pd in scorer_cls.params.param_defs)
+        print ""
+
 
 ################################################################################
 # Cmd line driver
@@ -65,19 +89,30 @@ def read_scores(fname):
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Score the conservation of a single alignment file, using a single scorer.")
+        description="Score the conservation of a single alignment file, using a single scorer.",
+        usage="""%(prog)s [-h] [-l] scorer_name align_file [-a ALIGN_PARAMS] [-p SCORER_PARAMS]""")
 
-    parser.add_argument('scorer_name',
+    parser.add_argument('scorer_name', nargs="?",
         help="conservation estimation method")
-    parser.add_argument('align_file', 
+    parser.add_argument('align_file', nargs="?",
         help="path to alignment file to score")
 
+    parser.add_argument('-l', dest='list_params', action='store_true',
+        help="list parameters for a given scorer or for all scorers (if no scorer_name is specified) ")
     parser.add_argument('-a', dest='align_params', action='append', default=[],
         help="parameters associcated with align_file, can specify multiple. Specify as '-a inputName=inputValue', e.g. '-a tree_file=tree.txt'")
     parser.add_argument('-p', dest='scorer_params', action='append', default=[],
         help="parameters to pass to the scorer, can specify multiple. Specify as '-p paramName=paramValue', e.g. '-p use_gap_penalty=1")
 
     args = parser.parse_args()
+    if args.list_params:
+        list_alignment_paramdefs()
+        list_scorer_paramdefs(args.scorer_name)
+        sys.exit(0)
+    elif not args.scorer_name or not args.align_file:
+        parser.print_usage()
+        sys.stderr.write("%s: error: too few arguments\n" % sys.argv[0])
+        sys.exit(1)
     args.align_params = parse_params(args.align_params)
     args.scorer_params = parse_params(args.scorer_params)
 

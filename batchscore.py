@@ -146,7 +146,7 @@ def main():
         description="Batch score the conservation of multiple alignments, using multiple scorers.")
 
     parser.add_argument('config_file',
-        help="YAML config file specifying the dataset and scorers")
+        help="YAML config file specifying the dataset and scorers.  See `exapmles/example.yaml` for an example.")
     args = parser.parse_args()
 
 

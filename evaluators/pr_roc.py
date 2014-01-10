@@ -9,9 +9,7 @@ from evaluate import get_batchscores, get_out_dir
 from conseval.utils.stats import zscore
 
 
-AUC_LEVELS = [.1, .5, 1]
-
-
+# This code is temporary
 _f = (.0105/.064 - .0105)
 _F = 1 - .0105
 def to_keep(ts):
@@ -20,11 +18,12 @@ def to_keep(ts):
     # f = (.011/.064 - .011)
     # F = 1 - .011
     return ts or random.random() <= _f/_F
+# End temporary code
 
 
-def roc_pr(dataset_name, *scorer_ids):
+def pr_roc(dataset_name, *scorer_ids):
     """
-    build roc curve for each alignment, for each scorer
+    Draw PR and ROC curves for each scorer.
     """
     scores_cols = [[] for i in scorer_ids]
     test_scores = []
@@ -52,16 +51,32 @@ def roc_pr(dataset_name, *scorer_ids):
         scorer_precisions.append(precisions)
         scorer_recalls.append(recalls)
 
-    print_auc("ROC", scorer_ids, scorer_fprs, scorer_tprs)
     print_auc("PR", scorer_ids, scorer_recalls, scorer_precisions)
+    print_auc("ROC", scorer_ids, scorer_fprs, scorer_tprs)
 
-    fig1 = plot_roc(dataset_name, scorer_fprs, scorer_tprs, scorer_ids, .5, None)
-    fig2 = plot_pr(dataset_name, scorer_precisions, scorer_recalls, scorer_ids)
+    plot_pr(dataset_name, scorer_precisions, scorer_recalls, scorer_ids)
+    plot_roc(dataset_name, scorer_fprs, scorer_tprs, scorer_ids, .5, None)
 
-#    import ipdb
-#    ipdb.set_trace()
+    plt.show(block=False)
 
-    plt.show()
+    import ipdb
+    ipdb.set_trace()
+
+
+def plot_pr(name, scorer_precisions, scorer_recalls, scorer_ids, legend='upper right'):
+    fig = plt.figure()
+    y_max = 0
+    for ps, rs, id in zip(scorer_precisions, scorer_recalls, scorer_ids):
+        y_max = max(y_max, np.max(ps[rs>.1]))
+        plt.plot(rs, ps, label=id)
+    plt.xlabel('Recall')
+    plt.ylabel('Precision')
+    plt.ylim([0.0, y_max+.05])
+    plt.xlim([0.0, 1.0])
+    plt.title('%s - Precision-Recall curve' % name)
+    if legend:
+        plt.legend(loc=legend)
+    return fig
 
 
 def plot_roc(name, scorer_fprs, scorer_tprs, scorer_ids, x_max, y_min, legend='lower right'):
@@ -105,23 +120,11 @@ def plot_roc(name, scorer_fprs, scorer_tprs, scorer_ids, x_max, y_min, legend='l
     return fig
 
 
-def plot_pr(name, scorer_precisions, scorer_recalls, scorer_ids, legend='upper right'):
-    fig = plt.figure()
-    y_max = 0
-    for ps, rs, id in zip(scorer_precisions, scorer_recalls, scorer_ids):
-        y_max = max(y_max, np.max(ps[rs>.1]))
-        plt.plot(rs, ps, label=id)
-    plt.xlabel('Recall')
-    plt.ylabel('Precision')
-    plt.ylim([0.0, y_max+.05])
-    plt.xlim([0.0, 1.0])
-    plt.title('%s - Precision-Recall curve' % name)
-    if legend:
-        plt.legend(loc=legend)
-    return fig
-
-
+AUC_LEVELS = [.1, .5, 1]
 def print_auc(name, scorer_ids, scorer_xs, scorer_ys):
+    """
+    This doesn't work for PR curves
+    """
     # Compute AUCs for each scorer
     scorers_aucs = []
     for xs, ys in zip(scorer_xs, scorer_ys):
@@ -141,6 +144,3 @@ def print_auc(name, scorer_ids, scorer_xs, scorer_ys):
             line.append("%.4f"%auc)
         line.append(scorer_id)
         print "\t".join(line)
-
-
-
