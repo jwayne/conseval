@@ -32,15 +32,22 @@ scoring methods can be found in `scorers/`.
 ./score.py cs07.js_divergence examples/1dup_A_hssp-filtered.aln
 
 # Estimate conservation rates using the JS divergence scoring method
-# but with different parameters.
+# but with custom parameters.
 ./score.py cs07.js_divergence examples/1dup_A_hssp-filtered.aln -p lambda_prior=0.1 -p gap_cutoff=0 -p window_size=0
 
-# Estimate conservation rates using the JS divergence scoring method
-# but with a custom phylogenetic tree for the alignment.
-./score.py cs07.js_divergence examples/1dup_A_hssp-filtered.aln -a tree_file=examples/1dup_A_hssp-filtered.tree
+# Estimate conservation rates using the Rate4Site empirical Bayes scoring method.
+./score.py rate4site_eb examples/1dup_A_hssp-filtered.aln
 
-# List parameters for the JS divergence scoring method.
-./score.py cs07.js_divegence -l
+# Estimate conservation rates using the Rate4Site empirical Bayes scoring method,
+# but with custom parameters.
+./score.py rate4site_eb examples/1dup_A_hssp-filtered.aln -p sub_model=sub_models/jtt-dcmut.dat.txt
+
+# Estimate conservation rates using the Rate4Site empirical Bayes scoring method
+# but with a custom phylogenetic tree for the alignment.
+./score.py rate4site_eb examples/1dup_A_hssp-filtered.aln -a tree_file=examples/1dup_A_hssp-filtered.tree
+
+# List parameters for the INTREPID scoring method.
+./score.py intrepid -l
 
 # List parameters for all available scoring methods.
 ./score.py -l
@@ -80,8 +87,9 @@ It should be easy to:
 * Define and implement new scoring methods in `scorers/`
 * Define and implement new evaluation methods in `evaluators/`
 * Add different substitution models to `sub_models/`
-It is perhaps easiest to look at the other files in these folders as examples
-for how such scorers, evaluators, and substitution models should be written/formatted.
+
+It is perhaps easiest to look at the other files in these folders for examples
+on how such scorers, evaluators, and substitution models should be written/formatted.
 
 
 # Acknowledgements
