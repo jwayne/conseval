@@ -2,10 +2,14 @@ datasets:
     - csa
     - ec
 scorers:
-    - id: jsd-example2
-      name: cs07.js_divergence
+    - id: jsd-example-1
+      scorer: cs07.js_divergence
       # no params
-    - id: jsd-example
-      name: cs07.js_divergence
+    - id: jsd-example-2
+      scorer: cs07.js_divergence
       params:
         lambda_pw: .1
+    - id: r4s-example-1
+      scorer: rate4site_eb
+      params:
+        sub_model: sub_models/jtt-dcmut.dat.txt

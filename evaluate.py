@@ -34,17 +34,17 @@ def get_out_dir(evaluator_id=None):
     return ev_dir
 
 
-def get_batchscores(dataset_name, scorer_ids=[]):
+def get_batchscores(dataset_name, batchscore_ids=[]):
     # Sanity check.
     ds_dir = get_batchscore_dir(dataset_name)
     if not os.path.exists(ds_dir):
         raise IOError("%s for dataset %r does not exist"
                 % (ds_dir, dataset_name))
-    for scorer_id in scorer_ids:
-        sc_dir = os.path.join(ds_dir, scorer_id)
+    for batchscore_id in batchscore_ids:
+        sc_dir = os.path.join(ds_dir, batchscore_id)
         if not os.path.exists(sc_dir):
             raise IOError("%s for dataset %r, scorer %r does not exist"
-                    % (sc_dir, dataset_name, scorer_id))
+                    % (sc_dir, dataset_name, batchscore_id))
 
     dataset_config = DATASET_CONFIGS[dataset_name]
     align_files = dataset_config.get_align_files()
@@ -61,8 +61,8 @@ def get_batchscores(dataset_name, scorer_ids=[]):
         if n_gapped_cols > len(alignment.msa[0]) / 2:
             continue
         include = True
-        for scorer_id in scorer_ids:
-            sc_dir = os.path.join(ds_dir, scorer_id)
+        for batchscore_id in batchscore_ids:
+            sc_dir = os.path.join(ds_dir, batchscore_id)
             out_file = dataset_config.get_out_file(align_file, sc_dir)
             if not os.path.exists(out_file):
                 include = False
@@ -76,8 +76,8 @@ def get_batchscores(dataset_name, scorer_ids=[]):
     # Iterate through score files in dataset, per alignment.
     for align_file in afs:
         scores_tup = []
-        for scorer_id in scorer_ids:
-            sc_dir = os.path.join(ds_dir, scorer_id)
+        for batchscore_id in batchscore_ids:
+            sc_dir = os.path.join(ds_dir, batchscore_id)
             out_file = dataset_config.get_out_file(align_file, sc_dir)
             scores = read_batchscores(out_file)
             scores_tup.append(scores)
@@ -110,15 +110,23 @@ def main():
         help="name of evaluator")
     parser.add_argument('dataset_name',
         help="name of dataset")
-    parser.add_argument('scorer_ids', nargs='*',
-        help="ids of batchscores to evaluate")
+    parser.add_argument('batchscore_ids', nargs='*',
+        help="ids of batchscore runs to evaluate")
+
+    parser.add_argument('-l', dest='list_batchscore_ids', action='store_true',
+        help="list all batchscore run ids for the dataset")
 
     args = parser.parse_args()
+    if args.list_batchscore_ids:
+        ds_dir = os.path.join(OUTPUT_DIR, 'batchscore-'+args.dataset_name)
+        fnames = os.listdir(ds_dir)
+        print "\n".join(sorted(x for x in fnames if os.path.isdir(os.path.join(ds_dir,x))))
+        sys.exit(0)
 
     ev_name = args.evaluator_name
     ev_fn = get_evaluator(ev_name)
 
-    ev_fn(args.dataset_name, *args.scorer_ids)
+    ev_fn(args.dataset_name, *args.batchscore_ids)
 
 
 if __name__ == "__main__":

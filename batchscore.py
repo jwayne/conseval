@@ -30,23 +30,23 @@ def read_batchscore_config(config_file):
     # List of dataset names
     datasets = config['datasets']
 
-    # List of scorer id's, names, and params.
+    # List of scoring runs with the run id, scorer, and params.
     # Initialize the scorers
     scorers = []
     scs = config['scorers']
     ids = set()
     for sc in scs:
-        scorer_id = sc['id']
-        if scorer_id in ids:
-            raise ValueError("Duplicate scorer id: %s" % scorer_id)
-        ids.add(scorer_id)
-        scorer_name = sc['name']
+        batchscore_id = sc['id']
+        if batchscore_id in ids:
+            raise ValueError("Duplicate scorer id: %s" % batchscore_id)
+        ids.add(batchscore_id)
+        scorer_name = sc['scorer']
         if 'params' in sc:
             params = sc['params']
         else:
             params = {}
         scorer = get_scorer(scorer_name, **params)
-        scorer.set_output_id(scorer_id)
+        scorer.set_output_id(batchscore_id)
         scorers.append(scorer)
     return datasets, scorers
 

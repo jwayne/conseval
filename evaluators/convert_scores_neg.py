@@ -5,12 +5,12 @@ from conseval.io import read_batchscores, write_batchscores
 from evaluate import get_batchscore_dir
 
 
-def convert_scores_neg(dataset_name, *scorer_ids):
-    for scorer_id in scorer_ids:
+def convert_scores_neg(dataset_name, *batchscore_ids):
+    for batchscore_id in batchscore_ids:
         dc = DATASET_CONFIGS[dataset_name]
 
         ds_dir = get_batchscore_dir(dataset_name)
-        sc_dir = os.path.join(ds_dir, scorer_id)
+        sc_dir = os.path.join(ds_dir, batchscore_id)
         sc_dir_neg = sc_dir + "-neg"
         resp = raw_input("Creating negated version of\n  %s\nat\n  %s\nContinue? y/[n]: "
                 % (sc_dir, sc_dir_neg))

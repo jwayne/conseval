@@ -21,15 +21,15 @@ def to_keep(ts):
 # End temporary code
 
 
-def pr_roc(dataset_name, *scorer_ids):
+def pr_roc(dataset_name, *batchscore_ids):
     """
     Draw PR and ROC curves for each scorer.
     """
-    scores_cols = [[] for i in scorer_ids]
+    scores_cols = [[] for i in batchscore_ids]
     test_scores = []
 
     # Just aggregate all scores across all data files.  It isn't much memory anyway.
-    for alignment, scores_tup in get_batchscores(dataset_name, scorer_ids):
+    for alignment, scores_tup in get_batchscores(dataset_name, batchscore_ids):
         ts = alignment.testset
         counts = []
         for scores_col, scores in zip(scores_cols, scores_tup):
@@ -49,28 +49,28 @@ def pr_roc(dataset_name, *scorer_ids):
         scorer_precisions.append(precisions)
         scorer_recalls.append(recalls)
 
-    print_auc("PR", scorer_ids, scorer_recalls, scorer_precisions)
-    print_auc("ROC", scorer_ids, scorer_fprs, scorer_tprs)
+    print_auc("PR", batchscore_ids, scorer_recalls, scorer_precisions)
+    print_auc("ROC", batchscore_ids, scorer_fprs, scorer_tprs)
 
-    plot_pr(dataset_name, scorer_precisions, scorer_recalls, scorer_ids)
-    plot_roc(dataset_name, scorer_fprs, scorer_tprs, scorer_ids, .5, None)
+    plot_pr(dataset_name, scorer_precisions, scorer_recalls, batchscore_ids)
+    plot_roc(dataset_name, scorer_fprs, scorer_tprs, batchscore_ids, .5, None)
     plt.show(block=False)
 
     print """\n* To plot another PR curve:
-plot_pr(dataset_name, scorer_precisions, scorer_recalls, scorer_ids, legend='upper right')
+plot_pr(dataset_name, scorer_precisions, scorer_recalls, batchscore_ids, legend='upper right')
 plt.show()"""
     print """\n* To plot another ROC curve:
-plot_roc(dataset_name, scorer_fprs, scorer_tprs, scorer_ids, x_max=.5, legend='lower right')
+plot_roc(dataset_name, scorer_fprs, scorer_tprs, batchscore_ids, x_max=.5, legend='lower right')
 plt.show()"""
     print ""
     import ipdb
     ipdb.set_trace()
 
 
-def plot_pr(name, scorer_precisions, scorer_recalls, scorer_ids, legend='upper right', ):
+def plot_pr(name, scorer_precisions, scorer_recalls, batchscore_ids, legend='upper right', ):
     fig = plt.figure()
     y_max = 0
-    for ps, rs, id in zip(scorer_precisions, scorer_recalls, scorer_ids):
+    for ps, rs, id in zip(scorer_precisions, scorer_recalls, batchscore_ids):
         y_max = max(y_max, np.max(ps[rs>.1]))
         plt.plot(rs, ps, label=id)
     plt.xlabel('Recall')
@@ -83,17 +83,17 @@ def plot_pr(name, scorer_precisions, scorer_recalls, scorer_ids, legend='upper r
     return fig
 
 
-def plot_roc(name, scorer_fprs, scorer_tprs, scorer_ids, x_max=1, legend='lower right'):
+def plot_roc(name, scorer_fprs, scorer_tprs, batchscore_ids, x_max=1, legend='lower right'):
     fig = plt.figure()
 
     y_max = 0
-    for fprs, tprs, scorer_id in zip(scorer_fprs, scorer_tprs, scorer_ids):
+    for fprs, tprs, batchscore_id in zip(scorer_fprs, scorer_tprs, batchscore_ids):
         if x_max != 1:
             ind = bisect.bisect(fprs, x_max)
             fprs = fprs[:ind+1]
             tprs = tprs[:ind+1]
             y_max = max(y_max, tprs[-1])
-        plt.plot(fprs, tprs, label=scorer_id)
+        plt.plot(fprs, tprs, label=batchscore_id)
     plt.plot([0,1],[0,1],'k--')
 
     if x_max != 1:
@@ -113,7 +113,7 @@ def plot_roc(name, scorer_fprs, scorer_tprs, scorer_ids, x_max=1, legend='lower 
 
 
 AUC_LEVELS = [.1, .5, 1]
-def print_auc(name, scorer_ids, scorer_xs, scorer_ys):
+def print_auc(name, batchscore_ids, scorer_xs, scorer_ys):
     """
     This doesn't work for PR curves
     """
@@ -130,9 +130,9 @@ def print_auc(name, scorer_ids, scorer_xs, scorer_ys):
     print ""
     print "%s:" % name
     print "%s\tScorer" % "\t".join("AUC_{%.2f}"%aucl for aucl in AUC_LEVELS)
-    for scorer_id, scorer_auc in zip(scorer_ids, scorers_aucs):
+    for batchscore_id, scorer_auc in zip(batchscore_ids, scorers_aucs):
         line = []
         for auc in scorer_auc:
             line.append("%.4f"%auc)
-        line.append(scorer_id)
+        line.append(batchscore_id)
         print "\t".join(line)
