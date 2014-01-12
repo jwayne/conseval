@@ -37,3 +37,15 @@ def list_scorer_params(*scorers):
         for k, v in params:
             out.append("# \t%s: %s" % (k, v))
     return "\n".join(out) + "\n"
+
+
+def parse_params(params):
+    res = {}
+    for val in params:
+        if val.count("=") != 1:
+            raise ValueError("Bad format for params argument '%s'" % val)
+        k,v = val.split("=")
+        if k in res:
+            raise ValueError("Params argument '%s' specified multiple times" % k)
+        res[k] = v
+    return res

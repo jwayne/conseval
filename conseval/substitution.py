@@ -165,3 +165,13 @@ paramdef_bg_distribution = ParamDef(
         'bg_distribution', 'sub_models/blosum62.distribution', os.path.abspath,
         load_fxn=read_bg_distribution,
         help="background distribution file, e.g., swissprot.distribution")
+
+def _helper_optional(fn):
+    def _clean(x):
+        if x: return fn(x)
+        return None
+    return _clean
+paramdef_bg_distribution_optional = ParamDef(
+        'bg_distribution', 'sub_models/blosum62.distribution', _helper_optional(os.path.abspath),
+        load_fxn=_helper_optional(read_bg_distribution),
+        help="background distribution file, e.g., swissprot.distribution")

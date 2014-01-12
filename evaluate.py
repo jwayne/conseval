@@ -6,35 +6,27 @@ import sys
 
 from conseval.alignment import Alignment
 from conseval.datasets import DATASET_CONFIGS, OUTPUT_DIR
-from conseval.io import read_batchscores
+from conseval.io import read_batchscores, parse_params
 from conseval.utils.bio import get_column
 from conseval.utils.general import get_timestamp
 
 
 
 def get_batchscore_dir(dataset_name):
+    """
+    Get the directory where batchscore.py output scores for `dataset_name`
+    are stored.
+    """
     return os.path.join(OUTPUT_DIR, "batchscore-%s" % dataset_name)
 
 
-def get_out_dir(evaluator_id=None):
-    if not evaluator_id:
-        evaluator_id = get_timestamp()
-    ev_dir = os.path.join(OUTPUT_DIR, "evaluate-%s" % evaluator_id)
-    if os.path.exists(ev_dir):
-        resp = raw_input("%s exists. Overwrite? y/[n]: " % ev_dir)
-        if resp != 'y':
-            sys.exit(0)
-        try:
-            for filename in os.listdir(ev_dir):
-                os.remove(os.path.join(ev_dir, filename))
-            os.rmdir(ev_dir)
-        except OSError:
-            raise OSError("Could not overwrite directory %s" % ev_dir)
-    os.mkdir(ev_dir)
-    return ev_dir
-
-
 def get_batchscores(dataset_name, batchscore_ids=[]):
+    """
+    Useful for evaluators.
+    Get an iterator on (alignment, scores_col) where scores_col consists
+    of lists of scores for each id in `batchscore_ids`.  This iterator is over
+    all alignments in `dataset_name`.
+    """
     # Sanity check.
     ds_dir = get_batchscore_dir(dataset_name)
     if not os.path.exists(ds_dir):
@@ -75,16 +67,16 @@ def get_batchscores(dataset_name, batchscore_ids=[]):
 
     # Iterate through score files in dataset, per alignment.
     for align_file in afs:
-        scores_tup = []
+        scores_cols = []
         for batchscore_id in batchscore_ids:
             sc_dir = os.path.join(ds_dir, batchscore_id)
             out_file = dataset_config.get_out_file(align_file, sc_dir)
             scores = read_batchscores(out_file)
-            scores_tup.append(scores)
+            scores_cols.append(scores)
         alignment = Alignment(align_file,
                 test_file=dataset_config.get_test_file(align_file),
                 parse_testset_fn=dataset_config.parse_testset_fn)
-        yield alignment, scores_tup
+        yield alignment, scores_cols
 
 
 
@@ -104,29 +96,40 @@ def get_evaluator(name):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Run evaluators of scoring methods using the output from batch running the scorers on a dataset(s)")
+        description="Run evaluators of scoring methods using the output from batch running the scorers on a dataset(s)",
+        usage="%(prog)s [-h] [-l] evaluator_name dataset_name <batchscore_ids...>")
 
-    parser.add_argument('evaluator_name',
+    parser.add_argument('-l', dest='list_batchscore_ids', type=str,
+        help="list all batchscore run ids for the dataset")
+
+    parser.add_argument('evaluator_name', nargs='?',
         help="name of evaluator")
-    parser.add_argument('dataset_name',
+    parser.add_argument('dataset_name', nargs='?',
         help="name of dataset")
     parser.add_argument('batchscore_ids', nargs='*',
         help="ids of batchscore runs to evaluate")
 
-    parser.add_argument('-l', dest='list_batchscore_ids', action='store_true',
-        help="list all batchscore run ids for the dataset")
+    parser.add_argument('-p', dest='evaluator_params', action='append', default=[],
+        help="parameters to pass to the evaluator, can specify multiple. Specify as '-p paramName=paramValue', e.g. '-p overwrite=1")
+
 
     args = parser.parse_args()
     if args.list_batchscore_ids:
-        ds_dir = os.path.join(OUTPUT_DIR, 'batchscore-'+args.dataset_name)
-        fnames = os.listdir(ds_dir)
-        print "\n".join(sorted(x for x in fnames if os.path.isdir(os.path.join(ds_dir,x))))
+        ba_dir = get_batchscore_dir(args.list_batchscore_ids)
+        fnames = os.listdir(ba_dir)
+        print "\n".join(sorted(x for x in fnames if os.path.isdir(os.path.join(ba_dir,x))))
         sys.exit(0)
+    if not args.evaluator_name or not args.batchscore_ids:
+        parser.print_usage()
+        print "%s: error: too few arguments" % sys.argv[0]
+        sys.exit(1)
+
+    args.evaluator_params = parse_params(args.evaluator_params)
 
     ev_name = args.evaluator_name
     ev_fn = get_evaluator(ev_name)
 
-    ev_fn(args.dataset_name, *args.batchscore_ids)
+    ev_fn(args.dataset_name, *args.batchscore_ids, **args.evaluator_params)
 
 
 if __name__ == "__main__":

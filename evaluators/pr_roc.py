@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import random
 from sklearn.metrics import roc_curve, precision_recall_curve
 
-from evaluate import get_batchscores, get_out_dir
+from evaluate import get_batchscores
 from conseval.utils.stats import zscore
 
 
@@ -25,27 +25,27 @@ def pr_roc(dataset_name, *batchscore_ids):
     """
     Draw PR and ROC curves for each scorer.
     """
-    scores_cols = [[] for i in batchscore_ids]
+    allscores_cols = [[] for i in batchscore_ids]
     test_scores = []
 
     # Just aggregate all scores across all data files.  It isn't much memory anyway.
-    for alignment, scores_tup in get_batchscores(dataset_name, batchscore_ids):
+    for alignment, scores_cols in get_batchscores(dataset_name, batchscore_ids):
         ts = alignment.testset
         counts = []
-        for scores_col, scores in zip(scores_cols, scores_tup):
+        for allscores_col, scores in zip(allscores_cols, scores_cols):
             counts.append(ts.count(None))
-            scores_col += [scores[i] for i in xrange(len(ts)) if ts[i] is not None]
+            allscores_col += [scores[i] for i in xrange(len(ts)) if ts[i] is not None]
         test_scores += [ts[i] for i in xrange(len(ts)) if ts[i] is not None]
 
     scorer_fprs = []
     scorer_tprs = []
     scorer_precisions = []
     scorer_recalls = []
-    for scores_col in scores_cols:
-        fprs, tprs, _ = roc_curve(test_scores, scores_col, pos_label=1)
+    for allscores_col in allscores_cols:
+        fprs, tprs, _ = roc_curve(test_scores, allscores_col, pos_label=1)
         scorer_fprs.append(fprs)
         scorer_tprs.append(tprs)
-        precisions, recalls, _ = precision_recall_curve(test_scores, scores_col, pos_label=1)
+        precisions, recalls, _ = precision_recall_curve(test_scores, allscores_col, pos_label=1)
         scorer_precisions.append(precisions)
         scorer_recalls.append(recalls)
 
@@ -53,7 +53,7 @@ def pr_roc(dataset_name, *batchscore_ids):
     print_auc("ROC", batchscore_ids, scorer_fprs, scorer_tprs)
 
     plot_pr(dataset_name, scorer_precisions, scorer_recalls, batchscore_ids)
-    plot_roc(dataset_name, scorer_fprs, scorer_tprs, batchscore_ids, .5, None)
+    plot_roc(dataset_name, scorer_fprs, scorer_tprs, batchscore_ids, .5)
     plt.show(block=False)
 
     print """\n* To plot another PR curve:
@@ -67,7 +67,7 @@ plt.show()"""
     ipdb.set_trace()
 
 
-def plot_pr(name, scorer_precisions, scorer_recalls, batchscore_ids, legend='upper right', ):
+def plot_pr(name, scorer_precisions, scorer_recalls, batchscore_ids, legend='upper right'):
     fig = plt.figure()
     y_max = 0
     for ps, rs, id in zip(scorer_precisions, scorer_recalls, batchscore_ids):

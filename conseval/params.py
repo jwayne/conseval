@@ -5,21 +5,6 @@ for an example.
 Code by Josh Chen 2013.
 """
 
-################################################################################
-# Cmd line helpers
-################################################################################
-
-def parse_params(params):
-    res = {}
-    for val in params:
-        if val.count("=") != 1:
-            raise ValueError("Bad format for params argument '%s'" % val)
-        k,v = val.split("=")
-        if k in res:
-            raise ValueError("Params argument '%s' specified multiple times" % k)
-        res[k] = v
-    return res
-
 
 ################################################################################
 # Class definitions

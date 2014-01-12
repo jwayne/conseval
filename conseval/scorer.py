@@ -89,7 +89,7 @@ class Scorer(WithParams):
         if self.window_size:
             scores = window_score(scores, self.window_size, self.window_lambda)
         if self.normalize:
-            scores = list(zscore(scores))
+            scores = list(zscore(scores, filter=5))
 
         dt = time.time() - t0 #len(alignment.msa), len(alignment.msa[0])
         return scores

@@ -43,7 +43,7 @@ class Rate4siteEb(Scorer):
             alpha = 1
         # Precompute this for the initial alpha because it will be used at the
         # start every time an alignment is scored
-        self.dgd = DiscreteGammaDistribution(alpha, alpha, self.K)
+        self.prior_distr = DiscreteGammaDistribution(alpha, alpha, self.K)
 
 
     def _score(self, alignment):
@@ -54,7 +54,7 @@ class Rate4siteEb(Scorer):
 
         names_map = dict((name, i) for i, name in enumerate(alignment.names))
         rates, alpha_est, log_marginal = self._score_fixed_alpha(
-                alignment, names_map, self.dgd)
+                alignment, names_map, self.prior_distr)
 
         # EM for empirical bayes estimate of alpha
         if not self.alpha:
@@ -65,16 +65,16 @@ class Rate4siteEb(Scorer):
                     (not prev_log_marginal or \
                         abs(log_marginal-prev_log_marginal) > EM_CONVERGENCE):
                 prev_log_marginal = log_marginal
-                dgd = DiscreteGammaDistribution(alpha_est, alpha_est, self.K)
+                prior_distr = DiscreteGammaDistribution(alpha_est, alpha_est, self.K)
                 rates, alpha_est, log_marginal = self._score_fixed_alpha(
-                        alignment, names_map, dgd)
+                        alignment, names_map, prior_distr)
 
         # negate the rates so higher scores are conserved, just like all the
         # other scorers
         return [-r for r in rates]
 
 
-    def _score_fixed_alpha(self, alignment, names_map, dgd):
+    def _score_fixed_alpha(self, alignment, names_map, prior_distr):
         tree = alignment.get_phylotree()
 
         # Pre-compute the probabilities for every branch and rate.
@@ -84,7 +84,7 @@ class Rate4siteEb(Scorer):
         root = tree.root
         bfs = [root]
         for node in bfs:
-            for rate in dgd.get_rates():
+            for rate in prior_distr.get_rates():
                 if node is root:
                     P_cached[rate][node] = self.sub_model.freqs
                 else:
@@ -107,7 +107,7 @@ class Rate4siteEb(Scorer):
                 # Return mean rate.
                 rate = 1
             else:
-                rate, marginal = self._score_col(col, names_map, dgd, P_cached, tree)
+                rate, marginal = self._score_col(col, names_map, prior_distr, P_cached, tree)
                 rates_for_est.append(rate)
                 log_marginal += np.log(marginal)
             rates.append(rate)
@@ -121,7 +121,7 @@ class Rate4siteEb(Scorer):
         return rates, alpha_est, log_marginal
 
 
-    def _score_col(self, col, names_map, dgd, P_cached, tree):
+    def _score_col(self, col, names_map, prior_distr, P_cached, tree):
         """
         Compute this site's rate of evolution r as the expectation of the
         posterior: E[r|X] = \sum_r( P[X|r] P[r] r ) / \sum_r( P[X|r] P[r] ).
@@ -135,7 +135,7 @@ class Rate4siteEb(Scorer):
         top = 0
         # Denominator \sum_r( P(X,r) )
         bot = 0
-        for rate in dgd.get_rates():
+        for rate in prior_distr.get_rates():
             # P(X|r)
             likelihood = self._compute_subtree_likelihood(root, rate, col, names_map, P_cached)
             # likelihood None only if column is all gaps

@@ -31,7 +31,7 @@ def weighted_freq_count_pseudocount(col, seq_weights, pc_amount, with_gap=True):
     for j,aa in enumerate(col):
         if not with_gap and aa == '-':
             continue
-        freq_counts[aa_to_index[aa]] += seq_weights[j]
+        freq_counts[aa_to_index[aa]] += seq_weights[j%len(seq_weights)]
     freq_counts /= np.sum(freq_counts)
     return freq_counts
 

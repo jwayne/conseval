@@ -5,7 +5,7 @@ from __future__ import division
 
 from conseval.params import ParamDef
 from conseval.scorer import Scorer
-from conseval.utils.bio import get_column, weighted_gap_penalty
+from conseval.utils.bio import get_column, weighted_gap_penalty, amino_acids
 
 
 IS_BASE_SCORER = 1
@@ -35,6 +35,15 @@ class Cs07Scorer(Scorer):
             seq_weights = alignment.get_seq_weights()
         else:
             seq_weights = [1.] * len(alignment.msa)
+
+        # Estimate bg distribution from this alignment
+        if hasattr(self, 'bg_distribution'):
+            if not self.bg_distribution:
+                q = dict((aa, 0) for aa in amino_acids)
+                for seq in self.msa:
+                    for aa in seq:
+                        q[aa] += 1
+                self.bg_distribution = q
 
         scores = []
         for i in xrange(len(alignment.msa[0])):
