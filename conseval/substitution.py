@@ -91,6 +91,8 @@ class SubstitutionModel(object):
         Note that to speed computation, we pre-compute
             self.calc_P_left = PI^(-1/2) * Eigvecs
             self.calc_P_right = Eigvecs^-1 * PI^(1/2)
+
+        The P returned contains elements P_ij = P(this=j|parent=i)
         """
         A_eigvals_exp = np.diag(np.exp(self.A_eigvals*t))
         return self.calc_P_left * A_eigvals_exp * self.calc_P_right

@@ -13,6 +13,7 @@ Code by Josh Chen 2013.
 from __future__ import division
 import numpy as np
 
+from conseval.alignment import MockAlignment
 from conseval.scorer import Scorer, get_scorer_cls
 from conseval.params import ParamDef
 from conseval.substitution import paramdef_bg_distribution, paramdef_sub_model
@@ -94,17 +95,3 @@ class Intrepid(Scorer):
 
         scores = list(np.max(site_scores - site_avgscores, 1))
         return scores
-
-
-
-class MockAlignment():
-    """
-    For sending to Intrepid.subscorer._score(alignment)
-    """
-    def __init__(self, names, msa, tree, get_seq_weights):
-        self.names = names
-        self.msa = msa
-        self.tree = tree
-        self.get_seq_weights = get_seq_weights
-    def get_phylotree(self):
-        return self.tree

@@ -1,5 +1,7 @@
+from bisect import bisect
 import datetime
 import os
+from random import random
 
 
 def get_timestamp():
@@ -16,3 +18,8 @@ def get_all_module_names(dirname):
             name = os.path.join(root, file)[len(dirname)+1:].replace('/','.')
             names.append(name[:-3])
     return sorted(names)
+
+
+def weighted_choice(cum_probs):
+    n = random()
+    return bisect(cum_probs, n)

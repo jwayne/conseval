@@ -1,6 +1,5 @@
 datasets:
-    - csa
-    - ec
+    - examples
 scorers:
     - id: jsd-example-1
       scorer: cs07.js_divergence

@@ -1,6 +1,7 @@
 from __future__ import division
 import matplotlib.pyplot as plt
 import numpy as np
+import scipy.stats as ss
 from evaluate import get_batchscores
 
 
@@ -13,6 +14,10 @@ def hist_scores(dataset_name, *batchscore_ids, **kwargs):
         noblock = kwargs['noblock']
     else:
         noblock = False
+    if 'fit_gamma' in kwargs:
+        fit_gamma = kwargs['fit_gamma']
+    else:
+        fit_gamma = False
 
     N = len(batchscore_ids)
     pos_cols = [[] for i in xrange(N)]
@@ -29,6 +34,18 @@ def hist_scores(dataset_name, *batchscore_ids, **kwargs):
     for pos_col, neg_col, batchscore_id in zip(pos_cols, neg_cols, batchscore_ids):
         pos_col = np.array(pos_col)
         neg_col = np.array(neg_col)
+
+        # Compute summary statistics
+        tot = len(pos_col) + len(neg_col)
+        pos_mean = np.mean(pos_col)
+        pos_var = np.var(pos_col)
+        neg_mean = np.mean(neg_col)
+        neg_var = np.var(neg_col)
+        print "%s:\n\tpos %f, neg %s\n\tpos mean %f, var %f\n\tneg mean %f, var %f" % (
+            batchscore_id, len(pos_col)/tot, len(neg_col)/tot,
+            pos_mean, pos_var, neg_mean, neg_var)
+
+        # Compute plot statistics
         scores_min = np.min((np.min(pos_col), np.min(neg_col)))
         scores_max = np.max((np.max(pos_col), np.max(neg_col)))
         bins = np.linspace(scores_min,scores_max,101)
@@ -37,13 +54,25 @@ def hist_scores(dataset_name, *batchscore_ids, **kwargs):
         bin_mids = bin_lows + bin_width
 
         # Plot counts
+        plt.ion()
         fig = plt.figure()
         pos_counts, _ = np.histogram(pos_col, bins)
         neg_counts, _ = np.histogram(neg_col, bins)
         ax = plt.gca()
+        ax.bar(bin_lows, neg_counts, bin_width, color='r', alpha=0.5)#, bottom=pos_counts)
         ax.bar(bin_lows, pos_counts, bin_width, color='g', alpha=0.8)
-        ax.bar(bin_lows, neg_counts, bin_width, color='r', bottom=pos_counts, alpha=0.5)
         ax.set_ylabel('Count')
+        ax.set_xlabel('Score')
+
+        # Plot gamma fit if desired
+        if fit_gamma:
+            x = np.abs(bin_mids)
+            plt.plot(bin_mids, bin_width * len(pos_col) * \
+                ss.gamma.pdf(x, a=abs(pos_mean)**2/pos_var, scale=pos_var/abs(pos_mean)),
+                'g')
+            plt.plot(bin_mids, bin_width * len(neg_col) * \
+                ss.gamma.pdf(x, a=abs(neg_mean)**2/neg_var, scale=neg_var/abs(neg_mean)),
+                'r')
 
         # Plot corresponding F1
         pos_tot = sum(pos_counts)
@@ -64,8 +93,7 @@ def hist_scores(dataset_name, *batchscore_ids, **kwargs):
         ax.plot(bin_mids, f1, '--')
         ax.set_ylabel('F1')
 
-        plt.title('Scores (green=+, red=-, --=F1) on %s by %s' % (dataset_name, batchscore_id))
-        plt.xlabel('Score')
+        plt.title('Scores (%s, %s)' % (batchscore_id, dataset_name))
         figs.append(fig)
 
     if noblock:

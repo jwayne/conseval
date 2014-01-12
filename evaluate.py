@@ -20,7 +20,7 @@ def get_batchscore_dir(dataset_name):
     return os.path.join(OUTPUT_DIR, "batchscore-%s" % dataset_name)
 
 
-def get_batchscores(dataset_name, batchscore_ids=[]):
+def get_batchscores(dataset_name, batchscore_ids=[], align_files_only=False):
     """
     Useful for evaluators.
     Get an iterator on (alignment, scores_col) where scores_col consists
@@ -64,6 +64,10 @@ def get_batchscores(dataset_name, batchscore_ids=[]):
 
     print "Evaluating dataset %r: %d/%d scored alignments after minor filtering" \
             % (dataset_name, len(afs), len(align_files))
+    if align_files_only:
+        for af in afs:
+            yield af
+        return
 
     # Iterate through score files in dataset, per alignment.
     for align_file in afs:
@@ -119,7 +123,7 @@ def main():
         fnames = os.listdir(ba_dir)
         print "\n".join(sorted(x for x in fnames if os.path.isdir(os.path.join(ba_dir,x))))
         sys.exit(0)
-    if not args.evaluator_name or not args.batchscore_ids:
+    if not args.evaluator_name or not args.dataset_name:
         parser.print_usage()
         print "%s: error: too few arguments" % sys.argv[0]
         sys.exit(1)

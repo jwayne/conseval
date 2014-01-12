@@ -131,6 +131,22 @@ class Alignment(WithParams):
         return self._seq_weights
 
 
+class MockAlignment():
+    """
+    Helpful for classes wanting to generate alignments not from files.
+    """
+    def __init__(self, names, msa, tree, get_seq_weights):
+        self.names = names
+        self.msa = msa
+        self.tree = tree
+        self.get_seq_weights = get_seq_weights
+
+    def get_phylotree(self):
+        return self.tree
+
+
+
+
 ################################################################################
 # Ingesting inputs
 ################################################################################

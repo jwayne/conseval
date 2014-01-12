@@ -10,11 +10,9 @@ class DatasetConfig(object):
     def __init__(self, aln_dir, test_dir, align_to_test_fn, parse_testset_fn):
         """
         @param aln_dir:
-            directory containing the aln files for this dataset, relative to
-            `INPUT_DIR`
+            directory containing the aln files for this dataset
         @param test_dir:
-            directory containing the test files for this dataset, relative to
-            `INPUT_DIR`
+            directory containing the test files for this dataset
         @param align_to_test_fn:
             function to convert the aln filename to the test filename. Directories
             are taken care of automatically
@@ -22,8 +20,8 @@ class DatasetConfig(object):
             function of (test_file, args) to parse the test file for this dataset
             Output contains 1 for positives, 0 for negatives, and None for unknown/unmatched
         """
-        self.aln_dir = os.path.join(INPUT_DIR, aln_dir)
-        self.test_dir = os.path.join(INPUT_DIR, test_dir)
+        self.aln_dir = os.abspath(aln_dir)
+        self.test_dir = os.abspath(test_dir)
         self._align_to_test_fn = align_to_test_fn
         self.parse_testset_fn = parse_testset_fn
 
@@ -189,15 +187,21 @@ def _parse_testset_ec(test_file, seq):
 
 DATASET_CONFIGS = {
     'csa': DatasetConfig(
-        aln_dir = 'cs07/conservation_alignments/csa_hssp',
-        test_dir = 'cs07/cat_sites',
+        aln_dir = 'input/cs07/conservation_alignments/csa_hssp',
+        test_dir = 'input/cs07/cat_sites',
         align_to_test_fn = lambda x: x[:-3] + 'cat_sites',
         parse_testset_fn = _parse_testset_csa,
     ),
     'ec': DatasetConfig(
-        aln_dir = 'cs07/conservation_alignments/ec_hssp',
-        test_dir = 'cs07/lig_distance',
+        aln_dir = 'input/cs07/conservation_alignments/ec_hssp',
+        test_dir = 'input/cs07/lig_distance',
         align_to_test_fn = lambda x: os.path.join(os.path.dirname(x), os.path.split(x)[-1][:6]+ '.dist_to_lig'),
         parse_testset_fn = _parse_testset_ec,
+    ),
+    'examples': DatasetConfig(
+        aln_dir = 'examples',
+        test_dir = 'examples',
+        align_to_test_fn: lambda x: x[:-3] + 'cat_sites',
+        parse_testset_fn = _parse_testset_csa,
     ),
 }
