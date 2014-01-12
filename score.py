@@ -3,6 +3,7 @@
 Score a single alignment using a single scorer.  Print scores in
 a pleasant human-readable format.
 """
+from __future__ import division
 import argparse
 import sys
 from conseval.alignment import Alignment
@@ -17,10 +18,16 @@ from conseval.utils.general import get_all_module_names
 # Input/output
 ################################################################################
 
-def write_scores(alignment, score_tups, scorer_names, f=sys.stdout, header=None):
+def write_scores(alignment, scores_cols, scorer_names, f=sys.stdout, header=None):
+    """
+    Write scores to `f` in human-readable format.  Columns written are:
+        (position index, aa's in column, score by scorer 1, score by scorer 2, ...)
+    Note that score.py has been changed to only support scoring using 1 scorer, so only
+    3 columns are printed.
+    """
     # sanity check
-    if not len(score_tups[0]) == len(scorer_names):
-        raise ValueError("Mismatch between inputs 'score_tups' and 'scorer_names'")
+    if not len(scores_cols) == len(scorer_names):
+        raise ValueError("Mismatch between inputs 'scores_cols' and 'scorer_names'")
 
     f.write("# Alignment: %s\n" % alignment.align_file)
     f.write("# Num sites: %d\n" % len(alignment.msa[0]))
@@ -36,6 +43,7 @@ def write_scores(alignment, score_tups, scorer_names, f=sys.stdout, header=None)
 
     # print scores
     f.write("# i\tcolumn\t%s\n" % "\t".join(scorer_names))
+    score_tups = zip(*scores_cols)
     for i, score_tup in enumerate(score_tups):
         site = "".join(get_column(i, alignment.msa))
         f.write("%d\t%s\t%s\n" % (i+1, site, "\t".join(map(write_score_helper, score_tup))))
@@ -56,7 +64,40 @@ def read_scores(fname):
                 scorer_names = prevline.strip().split()[2:]
             prevline = None
             score_tups.append(map(read_score_helper, line.split()[2:]))
-    return score_tups
+    scores_cols = zip(*score_tups)
+    return scores_cols
+
+
+def draw_scores(alignment, scores_cols, scorer_names):
+    """
+    Draw visual of scores in a bar-graph-like format.
+    Note that score.py has been changed to only support scoring using 1 scorer, so only
+    3 columns are printed.
+    """
+    import matplotlib as mpl
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    n_scorers = len(scores_cols)
+    n_sites = len(scores_cols[0])
+    width = 1
+    inds = np.arange(0,n_sites*width,width)
+
+    plt.figure(1, figsize=(n_sites/10,3*n_scorers))
+    i = 0
+    for scores, scorer_name in zip(scores_cols, scorer_names):
+        plt.subplot("%d1%d" % (n_scorers, i+1))
+        scores = np.array(scores)
+
+        bar = plt.bar(inds, scores, width)
+        plt.title(scorer_name)
+        plt.xlabel('Sites')
+        plt.xticks(inds+width/2, alignment.msa[0], fontsize=8)
+        plt.ylabel('Scores')
+        i += 1
+
+    plt.tight_layout()
+    plt.show()
 
 
 def list_alignment_paramdefs():
@@ -80,6 +121,8 @@ def list_scorer_paramdefs(scorer_names=None):
         print ""
 
 
+
+
 ################################################################################
 # Cmd line driver
 ################################################################################
@@ -101,6 +144,9 @@ def parse_args():
         help="parameters associcated with align_file, can specify multiple. Specify as '-a inputName=inputValue', e.g. '-a tree_file=tree.txt'")
     parser.add_argument('-p', dest='scorer_params', action='append', default=[],
         help="parameters to pass to the scorer, can specify multiple. Specify as '-p paramName=paramValue', e.g. '-p use_gap_penalty=1")
+
+    parser.add_argument('-d', dest='draw', action='store_true',
+        help="draw visual of scores")
 
     args = parser.parse_args()
     if args.list_params:
@@ -131,7 +177,10 @@ def main():
 
     # Output
     header = list_scorer_params(scorer)
-    write_scores(alignment, zip(scores), [args.scorer_name], header=header, f=sys.stdout)
+    scores_cols = [scores]
+    write_scores(alignment, scores_cols, [args.scorer_name], header=header, f=sys.stdout)
+    if args.draw:
+        draw_scores(alignment, scores_cols, [args.scorer_name])
 
 
 if __name__ == "__main__":
