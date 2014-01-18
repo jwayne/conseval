@@ -12,9 +12,7 @@ from conseval.utils.bio import weighted_freq_count_pseudocount, PSEUDOCOUNT, ami
 
 class JsDivergence(Scorer):
 
-    params = Scorer.params.with_defaults({
-        'window_size': 2,
-    }).extend(
+    params = Scorer.params.extend(
         ParamDef('gap_cutoff', .3, float, lambda x: 0<=x<=1,
             help="maximum allowed fraction of gaps per column; columns > this won't be scored"),
         ParamDef('use_gap_penalty', True, bool,

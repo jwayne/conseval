@@ -2,15 +2,22 @@ import os
 from conseval.utils.general import get_timestamp
 
 
+OUTPUT_DIR = os.path.abspath("output")
+
+
 def write_score_helper(score):
     if isinstance(score, float):
         return str(round(score,4))
+    elif isinstance(score, tuple):
+        return ",".join(map(write_score_helper,score))
     elif score is None:
         return '-'
     return str(score)
 
 
 def read_score_helper(field):
+    if ',' in field:
+        return map(read_score_helper, field.split(','))
     if field == '-':
         return None
     return float(field)
@@ -25,7 +32,7 @@ def write_batchscores(fname, scores):
 
 def read_batchscores(fname):
     with open(fname) as f:
-        return map(read_score_helper, f.read().strip().split())
+        return map(read_score_helper, f.read().strip().split('\n'))
 
 
 def list_scorer_params(*scorers):

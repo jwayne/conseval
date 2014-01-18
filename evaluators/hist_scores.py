@@ -19,6 +19,7 @@ def hist_scores(dataset_name, *batchscore_ids, **kwargs):
     else:
         fit_gamma = False
 
+    batchscore_ids = list(batchscore_ids)
     N = len(batchscore_ids)
     pos_cols = [[] for i in xrange(N)]
     neg_cols = [[] for i in xrange(N)]
@@ -29,6 +30,16 @@ def hist_scores(dataset_name, *batchscore_ids, **kwargs):
         for pos_col, neg_col, scores_col in zip(pos_cols, neg_cols, scores_cols):
             pos_col += (scores_col[i] for i in xrange(len(scores_col)) if ts[i])
             neg_col += (scores_col[i] for i in xrange(len(scores_col)) if not ts[i])
+
+    for i in xrange(len(pos_cols)):
+        pos_col = pos_cols[i]
+        if isinstance(pos_col, tuple) and len(pos_col[0]) == 2:
+            # We are analyzing r4s_func.
+            pos_cols[i], pos_col_new = zip(*pos_col)
+            pos_cols.append(pos_col_new)
+            neg_cols[i], neg_col_new = zip(*neg_cols[i])
+            neg_cols.append(neg_col_new)
+            batchscore_ids.append(batchscore_ids[i] + '-c')
 
     figs = []
     for pos_col, neg_col, batchscore_id in zip(pos_cols, neg_cols, batchscore_ids):
@@ -56,13 +67,13 @@ def hist_scores(dataset_name, *batchscore_ids, **kwargs):
         # Plot counts
         plt.ion()
         fig = plt.figure()
+        plt.xlabel('Score')
         pos_counts, _ = np.histogram(pos_col, bins)
         neg_counts, _ = np.histogram(neg_col, bins)
         ax = plt.gca()
         ax.bar(bin_lows, neg_counts, bin_width, color='r', alpha=0.5)#, bottom=pos_counts)
         ax.bar(bin_lows, pos_counts, bin_width, color='g', alpha=0.8)
         ax.set_ylabel('Count')
-        ax.set_xlabel('Score')
 
         # Plot gamma fit if desired
         if fit_gamma:

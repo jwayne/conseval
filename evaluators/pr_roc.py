@@ -6,7 +6,6 @@ import random
 from sklearn.metrics import roc_curve, precision_recall_curve
 
 from evaluate import get_batchscores
-from conseval.utils.stats import zscore
 
 
 # This code is temporary

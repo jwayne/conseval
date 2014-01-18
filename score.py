@@ -113,6 +113,8 @@ def list_scorer_paramdefs(scorer_names=None):
         scorer_names = get_all_module_names('scorers')
     for scorer_name in scorer_names:
         scorer_cls = get_scorer_cls(scorer_name)
+        if not scorer_cls:
+            continue
         x = "Scorer params for %s:" % scorer_name
         print ("="*len(x))
         print x
@@ -132,7 +134,8 @@ def parse_args():
         description="Score the conservation of a single alignment file, using a single scorer.",
         usage="%(prog)s [-h] [-l] scorer_name align_file [-a ALIGN_PARAMS] [-p SCORER_PARAMS]")
 
-    parser.add_argument('-l', dest='list_params', nargs=argparse.REMAINDER,
+    parser.add_argument('-l', dest='list_params', default=None,
+        nargs=argparse.REMAINDER,
         help="list parameters for all scorers (score.py -l), or for certain defined scorers (score.py -l intrepid rate4site_eb)")
 
     parser.add_argument('scorer_name', nargs="?",
@@ -149,7 +152,7 @@ def parse_args():
         help="draw visual of scores")
 
     args = parser.parse_args()
-    if args.list_params:
+    if args.list_params is not None:
         list_alignment_paramdefs()
         list_scorer_paramdefs(args.list_params)
         sys.exit(0)

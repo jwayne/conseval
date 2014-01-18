@@ -13,7 +13,7 @@ def get_all_module_names(dirname):
     names = []
     for root, _, files in os.walk(dirname):
         for file in files:
-            if not file.endswith('.py') or file == '__init__.py' or file == 'base.py':
+            if not file.endswith('.py') or file == '__init__.py':
                 continue
             name = os.path.join(root, file)[len(dirname)+1:].replace('/','.')
             names.append(name[:-3])

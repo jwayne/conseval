@@ -1,7 +1,7 @@
 from __future__ import division
 import time
 from conseval.params import ParamDef, Params, WithParams
-from conseval.utils.stats import zscore
+from conseval.utils.general import norm_scores, window_scores
 
 
 ################################################################################
@@ -31,7 +31,7 @@ def get_scorer_cls(name):
         scorer_clsname = "".join(s.capitalize() for s in name.split('.')[-1].split('_'))
         if hasattr(scorer_module, 'IS_BASE_SCORER'):
             if getattr(scorer_module, 'IS_BASE_SCORER'):
-                raise ImportError()
+                return 
         scorer_cls = getattr(scorer_module, scorer_clsname)
     except (ImportError, AttributeError), e:
         raise ImportError("%s: %s is not a valid scorer." % (e, name))
@@ -53,7 +53,7 @@ class Scorer(WithParams):
     # along with these defaults.  Defaults can be overridden and parameters
     # can be extended, see scorers/rate4site_eb.py for an example.
     params = Params(
-        ParamDef('window_size', 0, int, lambda x: x>=0,
+        ParamDef('window_size', 2, int, lambda x: x>=0,
             help="Number of residues on either side included in the window"),
         ParamDef('window_lambda', .5, float, lambda x: 0<=x<=1,
             help="lambda for window heuristic linear combination. Meaningful only if window_size != 0."),
@@ -87,9 +87,9 @@ class Scorer(WithParams):
         scores = self._score(alignment)
 
         if self.window_size:
-            scores = window_score(scores, self.window_size, self.window_lambda)
+            scores = window_scores(scores, self.window_size, self.window_lambda)
         if self.normalize:
-            scores = list(zscore(scores, filter=5))
+            scores = list(norm_scores(scores, filter=5))
 
         dt = time.time() - t0 #len(alignment.msa), len(alignment.msa[0])
         return scores
@@ -113,33 +113,3 @@ class Scorer(WithParams):
 
     def set_output_dir(self, out_dir):
         self.output_dir = out_dir
-
-
-
-################################################################################
-# Score adjustments
-################################################################################
-
-def window_score(scores, window_size, lam=.5):
-    """
-    This function takes a list of scores and a length and transforms them
-    so that each position is a weighted average of the surrounding positions.
-    Positions with scores less than zero are not changed and are ignored in the
-    calculation. Here window_size is interpreted to mean window_size residues on
-    either side of the current residue.
-    
-    Code by Tony Capra 2007.
-    """
-    w_scores = scores[:]
-    for i in xrange(window_size, len(scores)-window_size):
-        if scores[i] is None:
-            continue
-        curr_sum = 0.
-        num_terms = 0
-        for j in xrange(i-window_size, i+window_size+1):
-            if i != j and scores[j] is not None:
-                curr_sum += scores[j]
-                num_terms += 1
-        if num_terms:
-            w_scores[i] = (1-lam) * (curr_sum/num_terms) + lam * scores[i]
-    return w_scores

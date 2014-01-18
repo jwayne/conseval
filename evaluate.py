@@ -5,8 +5,8 @@ import os
 import sys
 
 from conseval.alignment import Alignment
-from conseval.datasets import DATASET_CONFIGS, OUTPUT_DIR
-from conseval.io import read_batchscores, parse_params
+from conseval.datasets import DATASET_CONFIGS
+from conseval.io import read_batchscores, parse_params, OUTPUT_DIR
 from conseval.utils.bio import get_column
 from conseval.utils.general import get_timestamp
 

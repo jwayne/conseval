@@ -24,37 +24,14 @@ class Intrepid(Scorer):
 
     params = Scorer.params.extend(
         #TODO: clean_fxn shouldn't allow bad subscorer names
-        ParamDef('subscorer_cls', 'cs07.js_divergence', load_fxn=get_scorer_cls,
+        ParamDef('subscorer_cls', 'js_divergence', load_fxn=get_scorer_cls,
             help="subscorer"),
-        ParamDef('normalize_subscores', False, bool,
-            help="normalize scores of subscorer for each "),
-
-        #TODO: don't define these here.  not sure how else to do it though
-        ParamDef('lambda_prior', .5, float, lambda x: 0<=x<=1,
-            help="prior weight lambda_prior in the Jensen-Shannon divergence"),
-        paramdef_bg_distribution,
-        paramdef_sub_model,
     )
 
     def __init__(self, **params):
         super(Intrepid, self).__init__(**params)
 
-        subscorer_param_names = set(p.name for p in self.subscorer_cls.params.param_defs)
-        # yuck
-        for k in params.keys():
-            if k not in subscorer_param_names:
-                del params[k]
-        if 'gap_cutoff' in subscorer_param_names:
-            params['gap_cutoff'] = 1
-        if 'use_gap_penalty' in subscorer_param_names:
-            params['use_gap_penalty'] = False
-        if 'use_seq_weights' in subscorer_param_names:
-            params['use_seq_weights'] = False
-        params.update({
-            "window_size": 0,
-            "normalize": self.normalize_subscores,
-        })
-        self.subscorer = self.subscorer_cls(**params)
+        self.subscorer = self.subscorer_cls()
 
 
     def _score(self, alignment):

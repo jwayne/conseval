@@ -11,8 +11,8 @@ import time
 import yaml
 
 from conseval.alignment import Alignment
-from conseval.datasets import DATASET_CONFIGS, OUTPUT_DIR
-from conseval.io import write_batchscores, list_scorer_params
+from conseval.datasets import DATASET_CONFIGS
+from conseval.io import write_batchscores, list_scorer_params, OUTPUT_DIR
 from conseval.scorer import get_scorer
 from conseval.utils import parallelize
 
@@ -115,10 +115,7 @@ def run_experiment_helper(dataset_config, scorers):
         Run scorers on one aln file.  This is a helper for multithreading the
         scoring of each aln file.
         """
-#       test_file = dataset_config.get_test_file(align_file)
         alignment = Alignment(align_file)
-#                test_file=test_file,
-#                parse_testset_fn=dataset_config.parse_testset_fn)
         for scorer in scorers:
             # Score.
             try:
